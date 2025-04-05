@@ -1,0 +1,72 @@
+\documentclass[12pt,a4paper]{article}
+
+% Modern font setup
+\usepackage{fontspec}
+\usepackage{unicode-math}
+
+% Font selection
+\setmainfont{Fira Sans}
+\setsansfont{Fira Sans}
+\setmonofont{Fira Code}
+\setmathfont{Fira Math}
+
+% Language and layout
+\usepackage[utf8]{inputenc} % optional with XeLaTeX, but safe
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+% Good to keep
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{url}
+
+% Bibliography
+\usepackage[backend=biber,style=authoryear]{biblatex}
+\addbibresource{references.bib}
+
+
+\title{A Minimal Working Paper}
+\author{Your Name \\
+Your Institution \\
+\texttt{you@example.com}
+}
+\date{\today}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{4cm}
+  {\Huge \bfseries A Minimal Working Paper \par}
+  \vspace{2cm}
+  {\Large Your Name\par}
+  \vspace{0.5cm}
+  {\large Your Institution\par}
+  \vspace{0.5cm}
+  {\ttfamily you@example.com\par}
+  \vfill
+  {\large \today\par}
+\end{titlepage}
+
+\begin{abstract}
+This abstract uses Fira fonts and a modern layout. It is beautiful and ready to go.
+\end{abstract}
+
+\twocolumn
+
+\section{Introduction}
+
+This is the body text using Fira Sans, Fira Math, and Fira Code for monospace~\cite{silva2020}.
+
+\section{Conclusion}
+
+And this is your modern conclusion.
+
+See~\cite{silva2020} for more.
+...
+\printbibliography
+
+
+\end{document}
+
