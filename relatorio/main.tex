@@ -1,0 +1,139 @@
+\documentclass[10pt,a4paper]{article}
+
+% Modern font setup
+\usepackage{fontspec}
+\usepackage{unicode-math}
+
+% Font selection
+\setmainfont{Fira Sans}
+\setsansfont{Fira Sans}
+\setmonofont{Fira Code}
+
+% Language and layout
+\usepackage[utf8]{inputenc} % optional with XeLaTeX, but safe
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+% Good to keep
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{outlines}
+
+% Bibliography
+\usepackage[backend=biber,style=authoryear]{biblatex}
+\addbibresource{references.bib}
+\renewcommand*{\nameyeardelim}{\addcomma\space}
+
+\title{Estruturação de Estados orientada a Game Design em Aprendizado por Reforço}
+\author{{\bfseries Marcelo Augusto Salomão Ganem }\\ Universidade Federal de Minas Gerais\\
+\texttt{marceloganem@dcc.ufmg.br}
+}
+\date{\today}
+\newcommand{\note}[1]{
+    \vspace{0.3cm}
+    \colorbox{blue!30}{
+            \begin{minipage}{0.4\textwidth}
+		    \ttfamily \footnotesize
+               #1
+            \end{minipage}
+        }
+    \vspace{0.3cm}
+}
+
+\setlength{\columnsep}{1cm} % or whatever you prefer
+\begin{document}
+
+\makeatletter
+% Title page, optional
+% \begin{titlepage}
+  % \centering
+  % \vspace*{5.5cm}
+    % {\Large \bfseries Above title \par}
+    % \vspace{1cm}
+    % {\Huge \bfseries \@title \par}
+  % \vspace{1cm}
+  % \vspace{0.5cm}
+  % {\Large \@author \par}
+  % \vspace{0.5cm}
+  % \vfill {\large \today\par}
+% \end{titlepage}
+
+\twocolumn
+\maketitle
+\begin{abstract}
+    this is the abstract
+\end{abstract}
+
+
+\section{Introdução}
+\label{introduction}
+
+\section{Objetivos}
+\label{goals}
+
+Tem-se por objetivo geral deste trabalho rq
+
+\begin{outline}
+
+    \1 rq1
+
+    \1 rq2
+
+\end{outline}
+
+Dessa maneira, espera-se ...
+
+\section{Referencial Teórico}
+\label{bw}
+
+\subsection{Machinations}
+\label{bw:machinations}
+
+\section{Trabalhos Relacionados}
+\label{rw}
+
+\section{Metodologia}
+\label{m}
+
+\subsection{Modelagem da sintaxe Machinations}
+\label{m:modeling}
+Os elementos descritos na seção \ref{bw:machinations} são definidos por \citeauthor{machinations} de maneira formal o suficiente a permitir uma simulação, mas não exatamente adequada para a implementação de um MDP no contexto de aprendizado por reforço. Assim, essa subseção se dedica à redefinição formal -- a algum nível de abstração -- dos elementos que compõem um diagrama de Machinations.
+
+\subsubsection{Nós}
+\textbf{Pools}, conforme descrito na seção \ref{bw:machinations}, são representadas como vértices $v \in V$. Definimos sua função de estado $x_{v,r}: V \times R \rightarrow \mathbb{R}$ como o número de recursos do tipo $r$ no nó $v$ e a função $m_{v}: V \rightarrow \{0,1,2\}$ como o modo de operação do nó entre passivo, automático ou interativo.
+
+\textbf{Gates} são (...)
+
+\subsubsection{Conexões}
+Conexões são representadas como arestas $e \in E$, tal que $E$ é a união de uma série de subconjuntos que representam cada um dos diferentes tipos de conexões descritas na seção \ref{bw:machinations}.
+
+\begin{align*}
+    E &= E^R \cup E^S\\
+    E^R &= \bigcup_{r \in R} E^r\\
+    E^S &= E^{L}, E^{N}, E^{T}, E^{A}
+\end{align*}
+
+Essa composição, apesar de extensa, define toda a taxonomia das conexões definidas por \citeauthor{machinations}.
+
+Conexões de recursos são representadas pelo subconjunto $E^R$ como a união das conexões para cada tipo de recurso. Uma conexão de recurso específica $e \in E^R$ é da forma $(u \rightarrow v)$ e tem definida para si uma função de taxa $T_e$ que define o fluxo de recursos do nó $u$ para o nó $v$ em um instante de tempo.
+
+O conjunto $E^S$ define as conexões de estado. Essas, por sua vez, se dividem em: (...)
+
+\subsubsection{Dinâmica}
+
+
+\subsection{Implementação do problema}
+\label{m:mdp}
+Observabilidade parcial...
+
+\subsection{Plano de Experimentos}
+\label{m:experiments}
+
+\printbibliography
+
+
+\end{document}
+
