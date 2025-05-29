@@ -1,0 +1,89 @@
+% Slide aspect ratio, theme and color theme
+\documentclass[aspectratio=169]{beamer}
+\usetheme{metropolis}
+\usecolortheme[snowy]{owl}
+
+% Modern font setup
+\usepackage{fontspec}
+\usepackage{unicode-math}
+
+% Font selection
+\setmainfont{Fira Sans}
+\setsansfont{Fira Sans}
+\setmonofont{Fira Code}
+\setmathfont{Fira Math}
+
+% Language and layout
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+
+% Good to keep
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{xstring}
+\usepackage{outlines}
+
+% Bibliography
+\usepackage[backend=biber,style=authoryear]{biblatex}
+\addbibresource{references.bib}
+\renewcommand*{\nameyeardelim}{\addcomma\space}
+\renewcommand*{\bibfont}{\color{black}\small}
+\setbeamercolor{bibliography item}{fg=black}
+\setbeamercolor{bibliography entry author}{fg=black}
+\setbeamercolor{bibliography entry title}{fg=black}
+\setbeamercolor{bibliography entry location}{fg=black}
+\setbeamercolor{bibliography entry note}{fg=black}
+
+% Wrapper for figures
+\newcommand{\insertfigure}[2]{
+  \StrBehind{#1}{/}[\FileWithExt]
+  \StrBefore{\FileWithExt}{.}[\FileName]
+  \begin{figure}[h!]
+    \vspace{0.25cm}
+    \centering
+    \includegraphics[width=0.5\linewidth]{#1}
+    \caption{#2}
+    \label{fig:\FileName}
+  \end{figure}
+}
+
+% END PREAMBLE
+
+\title{Estruturação de estados orientada a \textit{game design} em Aprendizado por Reforço}
+\author{Marcelo Augusto Salomão Ganem}
+\institute{Departamento de Ciência da Computação \\ Universidade Federal de Minas Gerais}
+\date{\today}
+\begin{document}
+
+\makeatletter
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}{Overview}
+    This is the abstract.
+\end{frame}
+
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+
+\section{First Section}
+\begin{frame}{First slide in first section}
+    Ayo check this out check this out check this out! Figura \ref{fig:monopoly}
+    \insertfigure
+      {figures/monopoly.png}
+      {\textit{Monopoly} (\citeyear{monopoly}) represented under the \textit{Machinations} syntax.}
+\end{frame}
+
+\begin{frame}
+    \printbibliography
+\end{frame}
+
+
+\end{document}
+
