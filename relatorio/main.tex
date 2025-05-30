@@ -118,18 +118,17 @@ Conexões são representadas como arestas $e \in E$, tal que $E$ é a união de 
 
 Essa composição, apesar de extensa, define toda a taxonomia das conexões definidas por \citeauthor{machinations}.
 
-\textbf{Conexões de recursos} são representadas pelo subconjunto $E^R$ como a união das conexões para cada tipo de recurso. Uma conexão de recurso específica $e \in E^R$ é da forma $(u \rightarrow v)$ e tem definida para si uma função de taxa $T_e$ --- uma variável aleatória\footnote{Para lidar com fluxos inteiros, reais ou probabilísticos} representando o fluxo de recursos do nó $u$ para o nó $v$ em um instante de tempo.
+\textbf{Conexões de recursos} são representadas pelo subconjunto $E^R$ como a união das conexões para cada tipo de recurso $r$. Uma conexão de recurso específica $e \in E^R$ é da forma $(u \rightarrow v)$ e tem definida para si uma função de taxa $T_e$ --- uma variável aleatória\footnote{Para lidar com fluxos inteiros, reais ou probabilísticos} representando o fluxo de recursos do nó $u$ para o nó $v$ em um instante de tempo.
 
 O conjunto $E^S$ define as \textbf{conexões de estado}. Essas, por sua vez, se dividem em:
 
 \begin{outline}
     \1 $E^T$: \textbf{modificadores de rótulo}\footnote{Do original \textit{label modifiers} \parencite{machinations}. O rótulo aqui é representado pela taxa $T_e$}, $e \in E^T = (u, r\rightarrow e')$, tal que a taxa $\dot{T}_{u,r,e}$ representa como mudanças no estado $x_{u, r}$ alteram o valor de $T_{e'}$.
     \1 $E^N$: \textbf{modificadores de nó}, $e \in E^N = (u, r \rightarrow v)$. A função $\dot{T}_{u,r,v}$ semelhantemente define como mudanças no estado $x_{u, r}$ alteram o valor de $x_{v, r}$.
-    \1 $E^G$: \textbf{gatilhos}, $e \in E^G = (u, v)$ tal que (se recursos entraram por todos os inputs de $u$) (então adicione $v$ a $V^*$ que são os nós ativos)
-    A node that has no inputs will fire outgoing triggers whenever it fires
-    \1 $E^A$: \textbf{ativadores} They activate or inhibit their target node
-based on the state of their source node and a specific condition.  Conditions are written as an arithmetic expression (for example ‘==0’, ‘<3’, ‘>=4’ or ‘!=2’) or a range of values (for example ‘3-6’). If the state of the source node meets this condition then the target node is activated (it can fire). When the condition is not met the target node is inhibited (it cannot fire).
-    \note{I think we can just infer whether a node is activatable from the current state of activators and other nodes}
+    \1 $E^G$: \textbf{gatilhos}, $e \in E^G = (u \rightarrow v)$, seguem a definição da Seção \ref{bw:machinations} e determinam se um nó faz parte ou não do conjunto $V^*(t)$ de nós ativos\footnote{Da definição original \textit{firing} \parencite{machinations}} no tempo $t$. 
+    \1 $E^A$: \textbf{ativadores}, $e \in E^A = (u \rightarrow v)$, determinam uma condição $P_e$ em função do estado $x_{u}$ tal que, quando não satisfeita no instante $t$, $v \notin V^*(t)$.
+    % They activate or inhibit their target node based on the state of their source node and a specific condition.  Conditions are written as an arithmetic expression (for example ‘==0’, ‘<3’, ‘>=4’ or ‘!=2’) or a range of values (for example ‘3-6’). If the state of the source node meets this condition then the target node is activated (it can fire). When the condition is not met the target node is inhibited (it cannot fire).\\
+    % \note{I think we can just infer whether a node is activatable from the current state of activators and other nodes}
 \end{outline}
 
 \subsubsection{Dinâmica}
