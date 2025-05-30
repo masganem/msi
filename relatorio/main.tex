@@ -103,11 +103,12 @@ Dessa maneira, espera-se ...
 Os elementos descritos na seção \ref{bw:machinations} são definidos por \citeauthor{machinations} de maneira formal o suficiente a permitir uma simulação, mas não exatamente adequada para a implementação de um MDP no contexto de aprendizado por reforço. Assim, essa subseção se dedica à redefinição formal -- a algum nível de abstração -- dos elementos que compõem um diagrama de Machinations.
 
 \subsubsection{Nós}
-\textbf{Pools}, conforme descrito na seção \ref{bw:machinations}, são representadas como vértices $v \in V$. Definimos sua função de estado $x_{v,r}: V \times R \rightarrow \mathbb{R}$ como o número de recursos do tipo $r$ no nó $v$ e a função $m_{v}: V \rightarrow \{0,1,2\}$ como o modo de operação do nó entre passivo, automático ou interativo.
+\textbf{Nós}, conforme descrito na seção \ref{bw:machinations}, são representados como vértices $v \in V$. Definimos sua função de estado $x_{v,r}: V \times R \rightarrow \mathbb{R}$ como o número de recursos do tipo $r$ no nó $v$ e a função $m_{v}: V \rightarrow \{0,1,2\}$ como o modo de ativação do nó entre passivo, automático ou interativo. Nós interativos acionados no instante $t$ são dicionados ao conjunto $V^+(t)$.
 
-\textbf{Gates} são (...)
+\textbf{Pools}, portanto, são nós que acumulam recursos e sem propriedades especiais. \textbf{Gates} são semelhantes às pools e também são nós $v \in V$, porém imediatamente redistribuem recursos conforme o seu modo de distribuição $d_v : V \rightarrow \{0,1\}$ -- determinístico ou aleatório, causando a distribuição, duplicação ou destruição de recursos conforme descrito na Subseção \ref{m:modeling:dynamics}.
 
 \subsubsection{Conexões}
+\label{m:modeling:connections}
 Conexões são representadas como arestas $e \in E$, tal que $E$ é a união de uma série de subconjuntos que representam cada um dos diferentes tipos de conexões descritas na seção \ref{bw:machinations}.
 
 \begin{align*}
@@ -118,12 +119,12 @@ Conexões são representadas como arestas $e \in E$, tal que $E$ é a união de 
 
 Essa composição, apesar de extensa, define toda a taxonomia das conexões definidas por \citeauthor{machinations}.
 
-\textbf{Conexões de recursos} são representadas pelo subconjunto $E^R$ como a união das conexões para cada tipo de recurso $r$. Uma conexão de recurso específica $e \in E^R$ é da forma $(u \rightarrow v)$ e tem definida para si uma função de taxa $T_e$ --- uma variável aleatória\footnote{Para lidar com fluxos inteiros, reais ou probabilísticos} representando o fluxo de recursos do nó $u$ para o nó $v$ em um instante de tempo.
+\textbf{Conexões de recursos} são representadas pelo subconjunto $E^R$ como a união das conexões para cada tipo de recurso $r$. Uma conexão de recurso específica $e \in E^R$ é da forma $(u \rightarrow v)$ e tem definida para si uma função de taxa $T_e$ --- uma variável aleatória\footnote{Para lidar com fluxos inteiros, reais ou probabilísticos} representando o fluxo de recursos do nó $u$ para o nó $v$ em um instante de tempo. O tipo de recurso a ser transferido por $e$ é identificado por $\tau (e) = r$.
 
 O conjunto $E^S$ define as \textbf{conexões de estado}. Essas, por sua vez, se dividem em:
 
 \begin{outline}
-    \1 $E^T$: \textbf{modificadores de rótulo}\footnote{Do original \textit{label modifiers} \parencite{machinations}. O rótulo aqui é representado pela taxa $T_e$}, $e \in E^T = (u, r\rightarrow e')$, tal que a taxa $\dot{T}_{u,r,e}$ representa como mudanças no estado $x_{u, r}$ alteram o valor de $T_{e'}$.
+    \1 $E^T$: \textbf{modificadores de taxa}\footnote{Do original \textit{label modifiers} \parencite{machinations}. O rótulo aqui é representado pela taxa $T_e$}, $e \in E^T = (u, r\rightarrow e')$, tal que a taxa $\dot{T}_{u,r,e}$ representa como mudanças no estado $x_{u, r}$ alteram o valor de $T_{e'}$.
     \1 $E^N$: \textbf{modificadores de nó}, $e \in E^N = (u, r \rightarrow v)$. A função $\dot{T}_{u,r,v}$ semelhantemente define como mudanças no estado $x_{u, r}$ alteram o valor de $x_{v, r}$.
     \1 $E^G$: \textbf{gatilhos}, $e \in E^G = (u \rightarrow v)$, seguem a definição da Seção \ref{bw:machinations} e determinam se um nó faz parte ou não do conjunto $V^*(t)$ de nós ativos\footnote{Da definição original \textit{firing} \parencite{machinations}} no tempo $t$. 
     \1 $E^A$: \textbf{ativadores}, $e \in E^A = (u \rightarrow v)$, determinam uma condição $P_e$ em função do estado $x_{u}$ tal que, quando não satisfeita no instante $t$, $v \notin V^*(t)$.
@@ -132,9 +133,44 @@ O conjunto $E^S$ define as \textbf{conexões de estado}. Essas, por sua vez, se 
 \end{outline}
 
 \subsubsection{Dinâmica}
+\label{m:modeling:dynamics}
+A Seção 4.2 de \textit{Engineering Emergence} define três modos de execução temporal -- este trabalho se limita ao caso de tempo síncrono onde, a cada instante $t$, todos os nós automáticos\footnote{Contadores podem ser implementados como um nó adicional e suas respectivas conexões} e os nós interativos acionados no instante $t-1$ são ativados. Conforme a definição original, todos os nós ativos no instante $t$ são processados ao mesmo tempo, levando a condições de corrida desambiguadas com regras específicas onde pertinente.
 
+A transição de estados entre o tempo $t$ e o tempo $t+1$ dadas as definições acima pode ser computada primeiro identificando quais elementos de $V$ estão em $V^*(t)$ e então distribuindo os recursos conforme as conexões $e$ pertinentes a quaisquer $u,v \in V^*$.
 
-\subsection{Implementação do problema}
+Para definir os nós pertencentes a $V^*(t)$, consideramos nós automáticos, nós interativos acionados na etapa anterior, nós ativados por gatilhos e o efeito de ativadores:
+
+\begin{align*}
+    V^*(t) &= \{v \in V \ | \ m_v = 1\}\\& \cup \{v \in V^+(t-1)\}\\
+    & \cup \{v: (u \rightarrow v) \in E^G\ | \\\
+    &(\prod_{e \in E^R | e = (* \rightarrow u)}{\Delta e(t-1) = T_e)} = 1 \}\\
+    &\cap \{v: (u \rightarrow v) \in E^A\ | \ P_e(x_u, t) = 1 \}\\
+\end{align*}
+
+Então, tomamos as arestas partindo de cada nó $u$ ativo no instante atual $E^*(t) = \{e \in E, u_e \in V^*(t)\}$ como o conjunto das conexões a serem disparadas no instante $t$. Tomando a interseção com cada um dos subconjuntos de $E$ definidos nessa seção, podemos atualizar o estado de cada nó ou conexão pertinente. Denominamos $E^{T*}$ o conjunto $E^T \cap E^*$, e assim equivalentemente para os demais subconjuntos definidos na Subseção \ref{m:modeling:connections}.
+
+Atualizamos primeiro os alvos dos modificadores de taxa -- para cada alvo $e$ no conjunto \{$e \in E^R \ | \ (u, r \rightarrow e) \in E^{T*}\}$, temos:
+
+$$
+T_{e}(t+1) = T_{e}(t) + \dot{T}_{u,r,e} \Delta x_{u,r}
+$$
+
+Em seguida, atualizamos o estado dos alvos de modificadores de nó. Para cada nó $v$ no conjunto $\{v \in V \ | \ (u, r \rightarrow v) \in E^{N*}\}$:
+
+$$
+x_{v, r}(t+1) = x_{v, r}(t) + \dot{T}_{u,r,v} \Delta x_{u,r}
+$$
+
+Por fim, fazemos a transferência de recursos conforme cada $e \in E^{R*}$, sendo $(u, v) = e$ e $r = \tau(e)$:
+
+\begin{align*}
+    x_{v, r}(t+1) &= x_{v,r}(t) + T_e(t)\\
+    x_{u, r}(t+1) &= x_{u,r}(t) - T_e(t)\\
+\end{align*}
+
+Esta descrição da dinâmica permite a simulação completa de diagramas Machinations como um ambiente de MDP de estado $S = \{x_v : v \in V\}$, garantidas desambiguações na implementação.
+
+\subsection{Implementação}
 \label{m:mdp}
 Observabilidade parcial...
 
