@@ -3,6 +3,14 @@
 % Modern font setup
 \usepackage{fontspec}
 \usepackage{unicode-math}
+\usepackage{mathrsfs}
+
+% optional: define shortcuts
+\newcommand{\St}{\mathbf{S}}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\R}{\mathbf{R}}
+\newcommand{\Ptr}{\mathbf{P}}
+\newcommand{\Obs}{\mathbf{O}}
 
 % Font selection
 \setmainfont{Fira Sans}
@@ -119,7 +127,7 @@ Conexões são representadas como arestas $e \in E$, tal que $E$ é a união de 
 
 Essa composição, apesar de extensa, define toda a taxonomia das conexões definidas por \citeauthor{machinations}.
 
-\textbf{Conexões de recursos} são representadas pelo subconjunto $E^R$ como a união das conexões para cada tipo de recurso $r$. Uma conexão de recurso específica $e \in E^R$ é da forma $(u \rightarrow v)$ e tem definida para si uma função de taxa $T_e$ --- uma variável aleatória\footnote{Para lidar com fluxos inteiros, reais ou probabilísticos} representando o fluxo de recursos do nó $u$ para o nó $v$ em um instante de tempo. O tipo de recurso a ser transferido por $e$ é identificado por $\tau (e) = r$.
+\textbf{Conexões de recursos} são representadas pelo subconjunto $E^R$ como a união das conexões para cada tipo de recurso $r$. Uma conexão de recurso específica $e \in E^R$ é da forma $(u \rightarrow v)$ e tem definida para si uma função de taxa $T_e$ --- uma variável aleatória\footnote{Para lidar com valores inteiros, reais ou probabilísticos} representando a transferência de recursos do nó $u$ para o nó $v$ em um instante de tempo. O tipo de recurso a ser transferido por $e$ é identificado por $\tau (e) = r$.
 
 O conjunto $E^S$ define as \textbf{conexões de estado}. Essas, por sua vez, se dividem em:
 
@@ -143,7 +151,7 @@ Para definir os nós pertencentes a $V^*(t)$, consideramos nós automáticos, n�
 \begin{align*}
     V^*(t) &= \{v \in V \ | \ m_v = 1\}\\& \cup \{v \in V^+(t-1)\}\\
     & \cup \{v: (u \rightarrow v) \in E^G\ | \\\
-    &(\prod_{e \in E^R | e = (* \rightarrow u)}{\Delta e(t-1) = T_e)} = 1 \}\\
+    &\Big(\prod_{e \in E^R | e = (* \rightarrow u)}{\Delta e(t-1) = T_e \Big)} = 1 \}\\
     &\cap \{v: (u \rightarrow v) \in E^A\ | \ P_e(x_u, t) = 1 \}\\
 \end{align*}
 
@@ -170,9 +178,20 @@ Por fim, fazemos a transferência de recursos conforme cada $e \in E^{R*}$, send
 
 Esta descrição da dinâmica permite a simulação completa de diagramas Machinations como um ambiente de MDP de estado $S = \{x_v : v \in V\}$, garantidas desambiguações na implementação.
 
-\subsection{Implementação}
+\subsection{Modelagem do POMDP}
 \label{m:mdp}
-Observabilidade parcial...
+
+Para o propósito de aprendizado por reforço, definimos os ambientes produzidos por diagramas Machinations como processos de decisão de Markov parcialmente observáveis. 
+
+Espaço de estados $\St$, probabilidade de transição $\Ptr$, powerset $\mathcal{P}$
+
+\subsubsection{Recompensas}
+\label{m:mdp:recompensas}
+\begin{align*}
+    \Phi(s) &= \sum_{v\in V^{\Phi}}\sum_{r \in R^{\Phi}}\omega_{v,r}\,x_{v,r}\\
+          &\ \ \ \ +\;\sum_{e\in E^{R^{\Phi}}}\rho_{e}\,T_{e},\\
+R(s,a,s') &= \Phi(s') \;-\; \Phi(s).
+\end{align*}
 
 \subsection{Plano de Experimentos}
 \label{m:experiments}
