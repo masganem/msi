@@ -108,16 +108,16 @@ Dessa maneira, espera-se ...
 
 \subsection{Modelagem da sintaxe Machinations}
 \label{m:modeling}
-Os elementos descritos na seção \ref{bw:machinations} são definidos por \citeauthor{machinations} de maneira formal o suficiente a permitir uma simulação, mas não exatamente adequada para a implementação de um MDP no contexto de aprendizado por reforço. Assim, essa subseção se dedica à redefinição formal -- a algum nível de abstração -- dos elementos que compõem um diagrama de Machinations.
+Os elementos descritos na Seção \ref{bw:machinations} são definidos por \citeauthor{machinations} de maneira formal o suficiente a permitir uma simulação, mas não exatamente adequada para a implementação de um MDP no contexto de aprendizado por reforço. Assim, essa Subseção se dedica à redefinição formal -- a algum nível de abstração -- dos elementos que compõem um diagrama de Machinations.
 
 \subsubsection{Nós}
-\textbf{Nós}, conforme descrito na seção \ref{bw:machinations}, são representados como vértices $v \in V$. Definimos sua função de estado $x_{v,r}: V \times R \rightarrow \mathbb{R}$ como o número de recursos do tipo $r$ no nó $v$ e a função $m_{v}: V \rightarrow \{0,1,2\}$ como o modo de ativação do nó entre passivo, automático ou interativo. Nós interativos acionados no instante $t$ são dicionados ao conjunto $V^+(t)$.
+\textbf{Nós}, conforme descrito na Seção \ref{bw:machinations}, são representados como vértices $v \in V$. Definimos sua função de estado $x_{v,r}: V \times R \rightarrow \mathbb{R}$ como o número de recursos do tipo $r$ no nó $v$ e a função $m_{v}: V \rightarrow \{0,1,2\}$ como o modo de ativação do nó entre passivo, automático ou interativo. Nós interativos acionados no instante $t$ são dicionados ao conjunto $V^+(t)$.
 
 \textbf{Pools}, portanto, são nós que acumulam recursos e sem propriedades especiais. \textbf{Gates} são semelhantes às pools e também são nós $v \in V$, porém imediatamente redistribuem recursos conforme o seu modo de distribuição $d_v : V \rightarrow \{0,1\}$ -- determinístico ou aleatório, causando a distribuição, duplicação ou destruição de recursos conforme descrito na Subseção \ref{m:modeling:dynamics}.
 
 \subsubsection{Conexões}
 \label{m:modeling:connections}
-Conexões são representadas como arestas $e \in E$, tal que $E$ é a união de uma série de subconjuntos que representam cada um dos diferentes tipos de conexões descritas na seção \ref{bw:machinations}.
+Conexões são representadas como arestas $e \in E$, tal que $E$ é a união de uma série de subconjuntos que representam cada um dos diferentes tipos de conexões descritas na Seção \ref{bw:machinations}.
 
 \begin{align*}
     E &= E^R \cup E^S\\
@@ -155,7 +155,7 @@ Para definir os nós pertencentes a $V^*(t)$, consideramos nós automáticos, n�
     &\cap \{v: (u \rightarrow v) \in E^A\ | \ P_e(x_u, t) = 1 \}\\
 \end{align*}
 
-Então, tomamos as arestas partindo de cada nó $u$ ativo no instante atual $E^*(t) = \{e \in E, u_e \in V^*(t)\}$ como o conjunto das conexões a serem disparadas no instante $t$. Tomando a interseção com cada um dos subconjuntos de $E$ definidos nessa seção, podemos atualizar o estado de cada nó ou conexão pertinente. Denominamos $E^{T*}$ o conjunto $E^T \cap E^*$, e assim equivalentemente para os demais subconjuntos definidos na Subseção \ref{m:modeling:connections}.
+Então, tomamos as arestas partindo de cada nó $u$ ativo no instante atual $E^*(t) = \{e \in E, u_e \in V^*(t)\}$ como o conjunto das conexões a serem disparadas no instante $t$. Tomando a interseção com cada um dos subconjuntos de $E$ definidos nessa Seção, podemos atualizar o estado de cada nó ou conexão pertinente. Denominamos $E^{T*}$ o conjunto $E^T \cap E^*$, e assim equivalentemente para os demais subconjuntos definidos na Subseção \ref{m:modeling:connections}.
 
 Atualizamos primeiro os alvos dos modificadores de taxa -- para cada alvo $e$ no conjunto \{$e \in E^R \ | \ (u, r \rightarrow e) \in E^{T*}\}$, temos:
 
@@ -185,13 +185,35 @@ Para o propósito de aprendizado por reforço, definimos os ambientes produzidos
 
 Espaço de estados $\St$, probabilidade de transição $\Ptr$, powerset $\mathcal{P}$
 
+\subsubsection{Estados}
+\label{m:mdp:states}
+Sejam $X = \{x_{v,r} : (v, r) \in V \times R\}$ e $T = \{e_t : e \in E^R\}$, definimos o espaço de estados do MDP como $\St = X \times T$, tal que, no instante $t$, um estado $S_t = (X_t, T_t)$. Isto é, o estado é o número de recursos de cada tipo em cada nó em $V$, bem como a taxa de cada uma das conexões de recurso no diagrama.
+
+Ainda, como é o caso em parte significativa dos jogos, o agente não tem informações completas sobre o estado. Formalmente, separamos os vetores $X$ e $T$ em $(X^o, X^h)$ e $(T^o, T^h)$ -- para as partes observáveis e escondidas, respectivamente, e definimos um espaço de observação $\Omega = X^o \times T^o$. Assim, temos a função de observação $\Obs : \St \rightarrow \Omega$, responsável por definir quais partes do estado são observáveis ou não.
+
+Vale ressaltar que a definição do processo como um POMDP ainda permite a aplicação da maioria das técnicas de aprendizado por reforço que presumem um MDP -- com a ressalva de um sinal de percepção mais ruidoso, a depender do grau de parcialidade da observação.
+
+\subsubsection{Ações}
+\label{m:mdp:actions}
+Considerando a definição de tempo síncrono em Machinations, onde um agente pode acionar qualquer número de nós interativos no máximo uma vez por instante, definimos $\A = \mathcal{P}(\{ v \in V \ | \ m_v = 2\})$, i.e., o conjunto potência dos nós interativos.
+
 \subsubsection{Recompensas}
-\label{m:mdp:recompensas}
+\label{m:mdp:rewards}
+Considerando a diversidade de critérios de sucesso em jogos, visando um esquema de recompensas agnóstico a diagramas específicos, definimos pesos $\omega$ e $\rho$ para cada elemento de $X$ e $T$, respectivamente. Seguindo o princípio de \textit{potential-based shaping} \parencite{potential-rl}, temos:
+
 \begin{align*}
     \Phi(s) &= \sum_{v\in V^{\Phi}}\sum_{r \in R^{\Phi}}\omega_{v,r}\,x_{v,r}\\
           &\ \ \ \ +\;\sum_{e\in E^{R^{\Phi}}}\rho_{e}\,T_{e},\\
-R(s,a,s') &= \Phi(s') \;-\; \Phi(s).
+\R(s,a,s') &= \Phi(s') \;-\; \Phi(s).
 \end{align*}
+
+Assim, para cada especificação de diagrama Machinations, pode-se definir também os critérios específicos de recompensa conforme cada um dos nós. Ainda, a definição da função de potencial $\Phi$ facilita a extensão do esquema de recompensas conforme novos critérios.
+
+\subsubsection{Transições}
+\label{m:mdp:transitions}
+Nessa implementação, a função de transições $\Ptr (s' | s, a)$ não é explicitamente modelada. Em vez disso, amostra-se estados seguintes a partir de uma simulação conforme especificado na Subseção \ref{m:modeling:dynamics}. Essa decisão pode ser detrimental para estratégias de aprendizado por reforço que sejam \textit{model-based}, i.e., que tentem estimar uma função $\Ptr (s' | s, a)$ não definida.
+
+A construção de modelos implícitos da função de transição ou a sua composição analítica a partir dos componentes de um dado diagrama Machinations são possíveis direções de investigação para estudos futuros.
 
 \subsection{Plano de Experimentos}
 \label{m:experiments}
