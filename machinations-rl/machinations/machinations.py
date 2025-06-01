@@ -1,4 +1,5 @@
 import numpy as np
+from step_jit import step_jit
 from definitions import *
 
 class Machinations:
@@ -104,10 +105,9 @@ class Machinations:
                 X[node.id][resource.id] = float(amount)
 
         # Resource connection rates are separated as they are part of the state
-        T_e = np.zeros((len(resource_connections), len(resources)), dtype=float)
+        T_e = np.zeros((len(resource_connections),), dtype=float)
         for i, connection in enumerate(resource_connections):
-            resource = resource_dict[connection.resource_type]
-            T_e[i][resource.id] = float(connection.rate)
+            T_e[i] = float(connection.rate)
 
         return cls(
                 nodes,
@@ -124,5 +124,6 @@ class Machinations:
 
 
     def step(self):
+        X_new, T_e_new = step_jit(self.V, self.E_R, self.E_T, self.E_N, self.E_G, self.E_A, self.X, self.T_e)
         self.t += 1
         pass
