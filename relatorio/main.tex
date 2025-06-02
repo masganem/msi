@@ -111,9 +111,10 @@ Dessa maneira, espera-se ...
 Os elementos descritos na Seção \ref{bw:machinations} são definidos por \citeauthor{machinations} de maneira formal o suficiente a permitir uma simulação, mas não exatamente adequada para a implementação de um MDP no contexto de aprendizado por reforço. Assim, essa Subseção se dedica à redefinição formal -- a algum nível de abstração -- dos elementos que compõem um diagrama de Machinations.
 
 \subsubsection{Nós}
-\textbf{Nós}, conforme descrito na Seção \ref{bw:machinations}, são representados como vértices $v \in V$. Definimos sua função de estado $x_{v,r}: V \times R \rightarrow \mathbb{R}$ como o número de recursos do tipo $r$ no nó $v$ e a função $m_{v}: V \rightarrow \{0,1,2\}$ como o modo de ativação do nó entre passivo, automático ou interativo. Nós interativos acionados no instante $t$ são dicionados ao conjunto $V^+(t)$.
+\textbf{Nós}, conforme descrito na Seção \ref{bw:machinations}, são representados como vértices $v \in V$. Definimos sua função de estado $x_{v,r}: V \times R \rightarrow \mathbb{R}$ como o número de recursos do tipo $r$ no nó $v$ e a função $m_{v}: V \rightarrow \{0,1,2\}$ como o modo de ativação do nó entre passivo, automático ou interativo. Nós interativos acionados no instante $t$ são dicionados ao conjunto $V^+(t)$. \textbf{Pools}, portanto, são nós que acumulam recursos e sem propriedades especiais.
 
-\textbf{Pools}, portanto, são nós que acumulam recursos e sem propriedades especiais. \textbf{Gates} são semelhantes às pools e também são nós $v \in V$, porém imediatamente redistribuem recursos conforme o seu modo de distribuição $d_v : V \rightarrow \{0,1\}$ -- determinístico ou aleatório, causando a distribuição, duplicação ou destruição de recursos conforme descrito na Subseção \ref{m:modeling:dynamics}.
+\textbf{Gates} são semelhantes às pools e também são nós $v \in V$, porém imediatamente redistribuem recursos conforme o seu modo de distribuição $d_v : V \rightarrow \{0,1\}$ -- determinístico ou não-determinístico, e o seu modo de saída $o_v: V \rightarrow \{0,1\}$ -- condicional ou aleatório, conforme descrito na Subseção \ref{m:modeling:dynamics}. Os comportamentos específicos de cada caso são descritos na Subseção seguinte. 
+
 
 \subsubsection{Conexões}
 \label{m:modeling:connections}
@@ -139,6 +140,10 @@ O conjunto $E^S$ define as \textbf{conexões de estado}. Essas, por sua vez, se 
     % They activate or inhibit their target node based on the state of their source node and a specific condition.  Conditions are written as an arithmetic expression (for example ‘==0’, ‘<3’, ‘>=4’ or ‘!=2’) or a range of values (for example ‘3-6’). If the state of the source node meets this condition then the target node is activated (it can fire). When the condition is not met the target node is inhibited (it cannot fire).\\
     % \note{I think we can just infer whether a node is activatable from the current state of activators and other nodes}
 \end{outline}
+
+No caso de \textit{gates}, valem as seguintes regras particulares: as únicas conexões que partem de \textit{gates} são conexões de recursos e gatilhos. Ainda, suas saídas podem ser condicionais ou aleatórias. Com saídas condicionais, cada conexão $e \in E^G \cup E^R$ partindo de uma \textit{gate} $v$ é rotulada por uma condição $P_e = f(x_v)$. Com saídas aleatórias, os rótulos são pesos $p_e$, avaliados contra o quociente $q_e$ para decidir qual conexão será ativada quando o nó for ativado.
+
+Para \textit{gates} do modo de distribuição não - determinístico, um valor é amostrado aleatoriamente considerando um total (ou quociente) $q_e$ a cada turno, avaliado contra os pesos $p_e$ ou condições $P_e$ de cada uma de suas saídas para decidir qual será ativada. No caso determinístico, o valor utilizado é o total de recursos transferidos pelo nó até o instante $t$.
 
 \subsubsection{Dinâmica}
 \label{m:modeling:dynamics}
@@ -213,7 +218,7 @@ Assim, para cada especificação de diagrama Machinations, pode-se definir tamb�
 \label{m:mdp:transitions}
 Nessa implementação, a função de transições $\Ptr (s' | s, a)$ não é explicitamente modelada. Em vez disso, amostra-se estados seguintes a partir de uma simulação conforme especificado na Subseção \ref{m:modeling:dynamics}. Essa decisão pode ser detrimental para estratégias de aprendizado por reforço que sejam \textit{model-based}, i.e., que tentem estimar uma função $\Ptr (s' | s, a)$ não definida.
 
-A construção de modelos implícitos da função de transição ou a sua composição analítica a partir dos componentes de um dado diagrama Machinations são possíveis direções de investigação para estudos futuros.
+A construção de modelos da função de transição ou a sua composição analítica a partir dos componentes de um dado diagrama Machinations são possíveis direções de investigação para estudos futuros.
 
 \subsection{Plano de Experimentos}
 \label{m:experiments}

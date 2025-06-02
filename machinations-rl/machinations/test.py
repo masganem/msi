@@ -5,6 +5,7 @@ r1 = Resource("HP")
 r2 = Resource("Mana")
 n1 = Pool(FiringMode.AUTOMATIC, [("HP", 10)])
 n2 = Pool(FiringMode.PASSIVE, [("Mana", 5)])
+n3 = Gate(FiringMode.AUTOMATIC, DistributionMode.NONDETERMINISTIC, OutputMode.CONDITIONAL, 6)
 e1 = ResourceConnection(
         n1, n2, "HP", 2.0
     )

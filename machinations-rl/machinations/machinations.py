@@ -35,7 +35,8 @@ class Machinations:
 
         for i, node in enumerate(nodes):
             node.id = i
-        V = np.array([np.array([n.id, n.firing_mode.value, n.type.value]) for n in nodes], dtype=float)
+
+        V = np.array([np.array([n.id, n.firing_mode.value, n.type.value, n.distribution_mode.value, n.output_mode.value, n.quotient]) for n in nodes], dtype=float)
 
         for i, connection in enumerate(connections):
             connection.id = i
@@ -47,9 +48,9 @@ class Machinations:
         triggers = list(filter(lambda c: c.type == ElementType.TRIGGER, connections))
         activators = list(filter(lambda c: c.type == ElementType.ACTIVATOR, connections))
         predicates = list()
-        for i, activator in enumerate(activators):
-            activator.predicate.id = i
-            predicates.append(activator.predicate.f)
+        for i, e in enumerate(list(filter(lambda c: c.predicate, resource_connections + triggers + activators))):
+            e.predicate.id = i
+            predicates.append(e.predicate.f)
 
         resource_dict = dict()
         for i, resource in enumerate(resources):
@@ -62,6 +63,8 @@ class Machinations:
                     c.src.id, # u
                     c.dst.id, # v
                     resource_dict[c.resource_type].id, # r
+                    c.predicate.id if c.predicate else -1, # gates only
+                    c.weight, # gates only
                 ]) for c in resource_connections], dtype=float)
 
         E_T = np.array([
@@ -87,6 +90,8 @@ class Machinations:
                     c.id,
                     c.src.id, # u
                     c.dst.id, # v
+                    c.predicate.id if c.predicate else -1, # gates only
+                    c.weight, # gates only
                 ]) for c in triggers], dtype=float)
 
         E_A = np.array([

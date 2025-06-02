@@ -6,7 +6,13 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e):
     # Find active nodes
     V_active = np.empty(V.shape[0], dtype=np.bool_)
     for i in range(V.shape[0]):
+        # Node is automatic
         V_active[i] = (V[i, 1] == 1)
+        # OR Interactive node was activated last turn
+        # OR Node is the target of a trigger whose source node had all its inputs satisfied (jesus christ)
+        # AND Node is not blocked by activators
+
+    # Run random gates
 
     # Find active resource edges
     E_R_active = np.empty(E_R.shape[0], dtype=np.bool_)
