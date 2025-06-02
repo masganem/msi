@@ -36,7 +36,15 @@ class Machinations:
         for i, node in enumerate(nodes):
             node.id = i
 
-        V = np.array([np.array([n.id, n.firing_mode.value, n.type.value, n.distribution_mode.value, n.output_mode.value, n.quotient]) for n in nodes], dtype=float)
+        V = np.array([np.array([
+                n.id,
+                n.firing_mode.value,
+                n.type.value,
+                n.distribution_mode.value,
+                n.output_mode.value,
+                n.quotient,
+                resource_dict[n.resource_type].id if n.resource_type else -1
+            ]) for n in nodes], dtype=float)
 
         for i, connection in enumerate(connections):
             connection.id = i

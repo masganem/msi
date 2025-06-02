@@ -51,6 +51,7 @@ class Node:
         self.quotient = -1
 
         self.initial_resources = initial_resources
+        self.resource_type = None
 
 class Pool(Node):
     def __init__(self, firing_mode: FiringMode, initial_resources = []):
@@ -58,12 +59,13 @@ class Pool(Node):
         self.type = ElementType.POOL
         
 class Gate(Node):
-    def __init__(self, firing_mode: FiringMode, distribution_mode: DistributionMode, output_mode: OutputMode, quotient = -1):
+    def __init__(self, firing_mode: FiringMode, distribution_mode: DistributionMode, output_mode: OutputMode, quotient: int, resource_type: str):
         super().__init__(firing_mode)
         self.type = ElementType.GATE
         self.distribution_mode = distribution_mode
         self.output_mode = output_mode
         self.quotient = quotient
+        self.resource_type = resource_type
 
 class Connection:
     def __init__(self, src: Node, dst: Node | Connection):
