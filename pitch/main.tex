@@ -11,7 +11,7 @@
 \setmainfont{Fira Sans}
 \setsansfont{Fira Sans}
 \setmonofont{Fira Code}
-\setmathfont{Fira Math}
+% \setmathfont{Fira Math}
 
 % Language and layout
 \usepackage[utf8]{inputenc}
@@ -37,13 +37,13 @@
 \setbeamercolor{bibliography entry note}{fg=black}
 
 % Wrapper for figures
-\newcommand{\insertfigure}[2]{
+\newcommand{\insertfigure}[3]{
   \StrBehind{#1}{/}[\FileWithExt]
   \StrBefore{\FileWithExt}{.}[\FileName]
   \begin{figure}[h!]
     \vspace{0.25cm}
     \centering
-    \includegraphics[width=0.5\linewidth]{#1}
+    \includegraphics[width=#3\linewidth]{#1}
     \caption{#2}
     \label{fig:\FileName}
   \end{figure}
@@ -51,7 +51,7 @@
 
 % END PREAMBLE
 
-\title{Estruturação de estados orientada a \textit{game design} em Aprendizado por Reforço}
+\title{Sintetizando episódios de treino via abstração de jogos em Aprendizado por Reforço}
 \author{Marcelo Augusto Salomão Ganem}
 \institute{Departamento de Ciência da Computação \\ Universidade Federal de Minas Gerais}
 \date{\today}
@@ -63,21 +63,148 @@
 \titlepage
 \end{frame}
 
-\begin{frame}{Overview}
-    This is the abstract.
+\begin{frame}{Resumo}
+    Este trabalho pretende verificar a efetividade da \textbf{sintetização de episódios utilizando modelagens abstrativas} dos jogos Blackjack e \textit{Settlers of Catan} seguindo a sintaxe \textit{Machinations} \parencite{machinations} no treino de agentes de aprendizado por reforço. 
+
+    As políticas obtidas serão analisadas contra \textit{baselines} em implementações concretas dos jogos modelados para verificar a efetividade das intervenções propostas na velocidade e qualidade do aprendizado.
+
 \end{frame}
 
-\begin{frame}{Outline}
-\tableofcontents
+% \begin{frame}{Outline}
+% \tableofcontents
+% \end{frame}
+
+
+\section{Contexto}
+
+\begin{frame}{Diagramas \textit{Machinations}}
+        \begin{columns}
+            \begin{column}{0.5\textwidth}
+                \vspace{0.25cm}
+
+                A sintaxe Machinations \parencite{machinations} introduz regras para a representação de jogos a uma variedade de níveis de abstração.
+                \vspace{0.25cm}
+
+                O modelo representa um jogo como um diagrama de nós e conexões de diversos tipos entre eles. Assim, o estado do jogo é a distribuição de \textbf{recursos} entre os nós.
+            \end{column}
+            \begin{column}{0.5\textwidth}
+                \insertfigure
+                    {figures/catan.png}
+                    {Uma representação do jogo \textit{Settlers of Catan} sob a sintaxe de Machinations}
+                    {0.8}
+            \end{column}
+        \end{columns}
+    
+\end{frame}
+
+\begin{frame}{Diagramas \textit{Machinations}}
+    \begin{figure}[h!]
+        \begin{columns}
+            \begin{column}{0.6\textwidth}
+                \vspace{0.5cm}
+                \includegraphics[width=1.0\linewidth]{figures/nodes.png}
+            \end{column}
+            \begin{column}{0.4\textwidth}
+                \caption{Trecho do Apêndice A de \textit{Engineering Emergence} \parencite{machinations} descrevendo elementos básicos dos diagramas}
+            \end{column}
+        \end{columns}
+        \label{fig:nodes}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Diagramas \textit{Machinations}}
+    \begin{columns}
+        \begin{column}{0.6\textwidth}
+            Bla bla bla 
+        \end{column}
+        \begin{column}{0.4\textwidth}
+            \insertfigure
+              {figures/monopoly.png}
+              {\textit{Monopoly} (\citeyear{monopoly}) representado como um diagrama \textit{Machinations} \parencite{machinations}.}
+              {1.0}
+        \end{column}
+    \end{columns}
 \end{frame}
 
 
-\section{First Section}
-\begin{frame}{First slide in first section}
-    Ayo check this out check this out check this out! Figura \ref{fig:monopoly}
-    \insertfigure
-      {figures/monopoly.png}
-      {\textit{Monopoly} (\citeyear{monopoly}) represented under the \textit{Machinations} syntax.}
+\begin{frame}{Diagramas \textit{Machinations}}
+    As regras definidas por \citeauthor{machinations} não são formais o suficiente para permitir implementação direta\footnote{À época da publicação, existia uma simulação dinâmica disponível para o público -- hoje o serviço é prestado como B2B pela empresa Machinations, sediada na Holanda}. Assim, parte desse trabalho é transcrever a definição descritiva para uma definição formal.
+\end{frame}
+
+\section{Objetivos}
+
+\begin{frame}{Objetivos}
+    Utilizando diagramas Machinations como base, pretende-se \textbf{acelerar o treino de agentes de aprendizado por reforço via episódios sintetizados} como objetivo geral. Entendendo os diagramas como abstrações de problemas de aprendizado por reforço, o trabalho endereça especificamente as seguintes perguntas de pesquisa:
+    \begin{outline}
+        \1 Agentes treinados \textit{somente} na abstração produzem políticas coerentes no problema real?
+        \1 É possível extrair representações úteis explorando a abstração?
+    \end{outline}
+\end{frame}
+
+\section{Metodologia}
+
+\begin{frame}{Metodologia}
+    Overview da metodologia
+    \begin{outline}
+        \1 Objetivo geral
+            \2 Objetivo específico 1
+            \2 Objetivo específico 2
+    \end{outline}
+\end{frame}
+
+\begin{frame}{Formalizando diagramas \textit{Machinations}}
+    "\textbf{Nós} são representados como vértices $v \in V$, seu estado $x_{v,r}: V \times R \rightarrow \mathbb{R}$ (o número de recursos do tipo $r$ no nó $v$) e a função $m_{v}: V \rightarrow \{0,1,2\}$ como o modo de ativação do nó entre passivo, automático ou interativo [...]"
+\end{frame}
+
+\begin{frame}{Formalizando diagramas \textit{Machinations}}
+
+    \begin{columns}
+        \begin{column}{0.4\textwidth}
+            \vspace{0.75cm}
+
+            \textit{"Triggers fire when all the inputs of its source node become satisfied: when each input passed the number of resources to the node as indicated by its flow rate"}
+        \end{column}
+        \begin{column}{0.1\textwidth}
+            \begin{center}
+                $\rightarrow$
+            \end{center}
+        \end{column}
+        \begin{column}{0.4\textwidth}
+            \vspace{0.75cm}
+            \begin{align*}
+                &\{v: (u \rightarrow v) \in E^G\ | \\\ &\Big(\prod_{e \in E^R | e = (* \rightarrow u)}{\Delta e(t-1) = T_e \Big)} = 1 \}\\
+            \end{align*}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Definindo o POMDP}
+    Bla bla bla...
+\end{frame}
+
+\begin{frame}{Definindo o POMDP}
+    Bla bla bla...
+\end{frame}
+
+\begin{frame}{Definindo o POMDP}
+    Bla bla bla...
+\end{frame}
+
+\begin{frame}{Interface comum}
+    Simular episódios com machinations de maneira a mostrar a mesma "interface" pro agentque uma implementação do jogo de verdade. Executar episódios de treino mais rapidamente.
+\end{frame}
+
+\begin{frame}{Implementação}
+    Simulação, Gym wrapper, Clone dos Jogos, algoritmos de RL, visualizações com Manim.
+\end{frame}
+
+\begin{frame}{Plano de experimentos}
+    Experimentos...
+    \begin{outline}
+        \1 Objetivo geral
+            \2 Objetivo específico 1
+            \2 Objetivo específico 2
+    \end{outline}
 \end{frame}
 
 \begin{frame}
