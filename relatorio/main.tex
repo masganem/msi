@@ -1,4 +1,5 @@
 \documentclass[10pt,a4paper]{article}
+\hfuzz=10.002pt
 
 % Modern font setup
 \usepackage{fontspec}
@@ -15,9 +16,12 @@
 % Font selection
 \setmainfont{Fira Sans}
 \setsansfont{Fira Sans}
-\setmonofont{Fira Code}
-
-% Language and layout
+\setmonofont[
+  UprightFont   = *-Regular,
+  BoldFont      = *-Bold,
+  ItalicFont    = *-Regular,    % <-- force regular to be used as “italic”
+  BoldItalicFont= *-Bold        % <-- or omit if you don’t need Bold Italic
+]{Fira Code}
 \usepackage[utf8]{inputenc} % optional with XeLaTeX, but safe
 \usepackage[brazil]{babel}
 \usepackage{geometry}
