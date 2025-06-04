@@ -11,9 +11,9 @@
 \setmainfont{Fira Sans}
 \setsansfont{Fira Sans}
 \setmonofont[
-  UprightFont   = *-Regular,
+  UprightFont   = *,
   BoldFont      = *-Bold,
-  ItalicFont    = *-Regular,    % <-- force regular to be used as “italic”
+  ItalicFont    = *,    % <-- force regular to be used as “italic”
   BoldItalicFont= *-Bold        % <-- or omit if you don’t need Bold Italic
 ]{Fira Code}
 % \setmathfont{Fira Math}
@@ -102,7 +102,7 @@
             \begin{column}{0.5\textwidth}
                 \insertfigure
                     {figures/catan.png}
-                    {Uma representação do jogo \textit{Settlers of Catan} sob a sintaxe de Machinations}
+                    {Uma representação do jogo \textit{Settlers of Catan} sob a sintaxe de Machinations \parencite{machinations}}
                     {0.8}
             \end{column}
         \end{columns}
@@ -217,7 +217,7 @@
 	\begin{column}{0.5\textwidth}
 	    \insertfigure
 		{figures/risk.png}
-		{Bla bla risk}
+        {\textit{Loop} central do jogo \textit{Risk} \parencite{machinations}}
 		{1.0}
 	\end{column}
     \end{columns}
@@ -246,34 +246,36 @@
 \begin{frame}{Interface comum}
     \begin{columns}
 	\begin{column}{0.5\textwidth}
-	    Incluir um excalidrawzinho aqui
+        O agente efetivamente interage com POMDPs de dinâmicas distintas por meio de uma mesma interface. Assim, podemos verificar a qualidade das políticas obtidas a partir da abstração diretamente na sua contraparte mais complexa (o jogo).
 
-	    Simular episódios com machinations de maneira a mostrar a mesma "interface" pro agentque uma implementação do jogo de verdade. Executar episódios de treino mais rapidamente.
 	\end{column}
 	\begin{column}{0.5\textwidth}
 	    \insertfigure
-		{figures/risk.png}
-		{Bla bla risk}
-		{1.0}
+		{figures/arquitetura.png}
+		{Sob a perspectiva do agente, a dinâmica do MDP é indistinta entre a simulação do diagrama e do jogo.}
+		{0.8}
 	\end{column}
     \end{columns}
 \end{frame}
 
 \begin{frame}{Implementação}
     \begin{columns}
-	\begin{column}{0.5\textwidth}
+	\begin{column}{0.6\textwidth}
 	    \insertfigure
-		{figures/risk.png}
-		{Bla bla risk}
+		{figures/implementacao.png}
+		{Arquitetura da implementação do projeto}
 		{1.0}
 	\end{column}
-	\begin{column}{0.5\textwidth}
-	    \begin{outline}[enumerate]
-		 \1 Simulação
-		 \1 Gym wrapper
-		 \1 Clone dos Jogos
+	\begin{column}{0.4\textwidth}
+	    \begin{outline}
+		 \1 Ambiente Gymnasium
+                \2 Simulação do Jogo
+                \2 Simulação do Diagrama
 		 \1 Algoritmos de RL
+                \2 Q-Learning
+                \2 PPO
 		 \1 Visualizações com Manim
+                \2 Sequências de estados do diagrama e do agente
 	    \end{outline}
 	\end{column}
     \end{columns}
