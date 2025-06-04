@@ -10,7 +10,12 @@
 % Font selection
 \setmainfont{Fira Sans}
 \setsansfont{Fira Sans}
-\setmonofont{Fira Code}
+\setmonofont[
+  UprightFont   = *-Regular,
+  BoldFont      = *-Bold,
+  ItalicFont    = *-Regular,    % <-- force regular to be used as “italic”
+  BoldItalicFont= *-Bold        % <-- or omit if you don’t need Bold Italic
+]{Fira Code}
 % \setmathfont{Fira Math}
 
 % Language and layout
@@ -48,6 +53,13 @@
     \label{fig:\FileName}
   \end{figure}
 }
+
+% Shortcuts for MDP variables
+\newcommand{\St}{\mathbf{S}}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\R}{\mathbf{R}}
+\newcommand{\Ptr}{\mathbf{P}}
+\newcommand{\Obs}{\mathbf{O}}
 
 % END PREAMBLE
 
@@ -114,10 +126,12 @@
 
 \begin{frame}{Diagramas \textit{Machinations}}
     \begin{columns}
-        \begin{column}{0.6\textwidth}
-            Bla bla bla 
+        \begin{column}{0.5\textwidth}
+	    A proposta da sintaxe é capturar e evidenciar relações na "economia interna" \ \parencite{machinations} do jogo a partir de suas regras. 
+
+	    % A partir da definição dos elementos que compõem um diagrama e das conexões entre eles, é possível representar um único jogo de múltiplas maneiras.
         \end{column}
-        \begin{column}{0.4\textwidth}
+        \begin{column}{0.5\textwidth}
             \insertfigure
               {figures/monopoly.png}
               {\textit{Monopoly} (\citeyear{monopoly}) representado como um diagrama \textit{Machinations} \parencite{machinations}.}
@@ -141,14 +155,27 @@
     \end{outline}
 \end{frame}
 
+\section{Trabalhos Relacionados}
+\begin{frame}{trabalho relacionado 1}
+    bla bla bla...
+\end{frame}
+\begin{frame}{trabalho relacionado 2}
+    bla bla bla...
+\end{frame}
+
+
 \section{Metodologia}
 
 \begin{frame}{Metodologia}
-    Overview da metodologia
-    \begin{outline}
-        \1 Objetivo geral
-            \2 Objetivo específico 1
-            \2 Objetivo específico 2
+    \begin{outline}[enumerate]
+	\1 Definição de diagramas Machinations como MDPs
+	\1 Implementação do MDP e ambientes de avaliação\footnote{Implementação que clona o jogo e oferece uma API} para:
+            \2 Blackjack
+            \2 Settlers of Catan
+	\1 Auxiliar o treino de agentes de RL com o MDP abstrativo
+	\1 Comparar contra modelos idênticos treinados sem o MDP abstrativo em função de:
+	    \2 Velocidade de convergência
+	    \2 Qualidade da política obtida
     \end{outline}
 \end{frame}
 
@@ -179,31 +206,87 @@
 \end{frame}
 
 \begin{frame}{Definindo o POMDP}
-    Bla bla bla...
+    \begin{columns}
+	\begin{column}{0.5\textwidth}
+	    Definimos o espaço de estados do MDP como $\St = \{x_v: v \in V\} \times \{T_e: e \in R \}$ -- isto é, o número de recursos de cada tipo em cada vértice e a taxa de cada uma das conexões de recursos.
+
+	    \vspace{0.25cm}
+
+	    Ações são definidas como o conjunto potência dos vértices interativos: $\A = \mathcal{P}(\{ v \in V^A \})$
+	\end{column}
+	\begin{column}{0.5\textwidth}
+	    \insertfigure
+		{figures/risk.png}
+		{Bla bla risk}
+		{1.0}
+	\end{column}
+    \end{columns}
 \end{frame}
 
 \begin{frame}{Definindo o POMDP}
-    Bla bla bla...
-\end{frame}
 
-\begin{frame}{Definindo o POMDP}
-    Bla bla bla...
+    \vspace{0.25cm}
+
+    Definimos pesos $\omega$ e $\rho$ para cada nó e conexão de recursos, respectivamente. Seguindo o princípio de \textit{potential-based shaping} \parencite{potential-rl}, temos:
+    $$
+	\Phi(s) = \sum_{v\in V^{\Phi}}\sum_{r \in R^{\Phi}}\omega_{v,r}\,x_{v,r}+\sum_{e\in E^{R^{\Phi}}}\rho_{e}\,T_{e}
+    $$
+    $$
+    \R(s,a,s') = \Phi(s') \;-\; \Phi(s)
+    $$
+
+    \vspace{0.25cm}
+
+    A dinâmica do MDP, por fim, é definida pela simulação do diagrama Machinations.
+
+    % Assim, para cada especificação de diagrama Machinations, pode-se definir também os critérios específicos de recompensa conforme cada um dos nós. Ainda, a definição da função de potencial $\Phi$ facilita a extensão do esquema de recompensas conforme novos critérios.
+
 \end{frame}
 
 \begin{frame}{Interface comum}
-    Simular episódios com machinations de maneira a mostrar a mesma "interface" pro agentque uma implementação do jogo de verdade. Executar episódios de treino mais rapidamente.
+    \begin{columns}
+	\begin{column}{0.5\textwidth}
+	    Incluir um excalidrawzinho aqui
+
+	    Simular episódios com machinations de maneira a mostrar a mesma "interface" pro agentque uma implementação do jogo de verdade. Executar episódios de treino mais rapidamente.
+	\end{column}
+	\begin{column}{0.5\textwidth}
+	    \insertfigure
+		{figures/risk.png}
+		{Bla bla risk}
+		{1.0}
+	\end{column}
+    \end{columns}
 \end{frame}
 
 \begin{frame}{Implementação}
-    Simulação, Gym wrapper, Clone dos Jogos, algoritmos de RL, visualizações com Manim.
+    \begin{columns}
+	\begin{column}{0.5\textwidth}
+	    \insertfigure
+		{figures/risk.png}
+		{Bla bla risk}
+		{1.0}
+	\end{column}
+	\begin{column}{0.5\textwidth}
+	    \begin{outline}[enumerate]
+		 \1 Simulação
+		 \1 Gym wrapper
+		 \1 Clone dos Jogos
+		 \1 Algoritmos de RL
+		 \1 Visualizações com Manim
+	    \end{outline}
+	\end{column}
+    \end{columns}
 \end{frame}
 
 \begin{frame}{Plano de experimentos}
-    Experimentos...
     \begin{outline}
-        \1 Objetivo geral
-            \2 Objetivo específico 1
-            \2 Objetivo específico 2
+	\1 Testes de sanidade: Blackjack + Q-Learning
+	    \2 Garantir convergência no caso simples
+	\vspace{0.25cm}
+	\1 Aprendizado profundo: \textit{Settlers of Catan} + PPO
+	    \2 Responder a padrões no diagrama % Caso do monopoly
+	    \2 Lidar com espaços de estado maiores % Muitos nós, tipos de recurso e conexões
     \end{outline}
 \end{frame}
 
