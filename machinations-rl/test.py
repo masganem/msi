@@ -5,20 +5,20 @@ import pickle, pathlib
 
 r1 = Resource("HP")
 r2 = Resource("Mana")
-n1 = Pool(FiringMode.AUTOMATIC, [("HP", 10)])
-n2 = Pool(FiringMode.PASSIVE, [("Mana", 5)])
-n3 = Gate(FiringMode.AUTOMATIC, DistributionMode.NONDETERMINISTIC, OutputMode.CONDITIONAL, 6, "HP")
+n1 = Pool(FiringMode.AUTOMATIC, [(r1, 10)])
+n2 = Pool(FiringMode.PASSIVE, [(r2, 5)])
+n3 = Gate(FiringMode.AUTOMATIC, DistributionMode.NONDETERMINISTIC, OutputMode.CONDITIONAL, 6, r1)
 e1 = ResourceConnection(
-        n1, n2, "HP", 2.0
+        n1, n2, r1, 2.0
     )
 e2 = ResourceConnection(
-        n2, n1, "Mana", -1.0
+        n2, n1, r2, -1.0
     )
 p1 = Predicate("==", 0)
-e3 = Activator(n2, n1, p1, "HP")
+e3 = Activator(n2, n1, p1, r1)
 
 m = Machinations.load((
-    [n1, n2],
+    [n1, n2, n3],
     [e1, e2, e3],
     [r1, r2],
 ))

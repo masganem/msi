@@ -9,26 +9,35 @@ if not _model_pkl.exists():
     raise FileNotFoundError("machinations.pkl not found. Run test.py first.")
 
 with _model_pkl.open("rb") as _fp:
-    mach_model: Machinations = pickle.load(_fp)
+    m: Machinations = pickle.load(_fp)
 
-renderer = Renderer(mach_model)
-renderer.render(steps=10)  # adjust steps if desired
+r = Renderer(m)
+r.render(steps=10)  # adjust steps if desired
 
-n_nodes = len(mach_model.nodes)
-radius = 4.0
+n_nodes = len(m.nodes)
+radius = 2.0
 
-for idx, node in enumerate(mach_model.nodes):
-    angle = 2 * math.pi * idx / n_nodes
+for i, node in enumerate(m.nodes):
+    angle = 2 * math.pi * i / n_nodes
     x = radius * math.cos(angle)
     y = radius * math.sin(angle)
     node.pos = (x, y)  # type: ignore[attr-defined]
-    node.color = random.choice(["#d62728", "#9467bd", "#ff7f0e"])
+    node.name = "$V_{" + str(i) + "}$"
+
+for i, c in enumerate(m.connections):
+    c.name = "$E_{" + str(i) + "}$"
+
+for i, resource in enumerate(m.resources):
+    if resource.name == "HP":
+        resource.color = "#ff0000"
+    elif resource.name == "Mana":
+        resource.color = "#0000ff"
 
 _renderer_pkl = pathlib.Path("render") / "renderer.pkl"
 with _renderer_pkl.open("wb") as _fp:
-    pickle.dump(renderer, _fp)
+    pickle.dump(r, _fp)
 
-subprocess.run(["manim", "-pql", "render/scene.py", "MachinationsScene"], check=True)
+subprocess.run(["manim", "-pqh", "render/scene.py", "MachinationsScene"], check=True)
 
 try:
     os.remove(_renderer_pkl)

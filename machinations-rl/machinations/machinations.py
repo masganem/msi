@@ -5,7 +5,9 @@ from .definitions import *
 class Machinations:
     def __init__(
         self,
+        resources,
         nodes,
+        connections,
         resource_connections,
         label_modifiers,
         node_modifiers,
@@ -20,7 +22,9 @@ class Machinations:
         predicates
     ):
         self.t = 0
+        self.resources = resources
         self.nodes = nodes
+        self.connections = connections
         self.resource_connections = resource_connections
         self.label_modifiers = label_modifiers
         self.node_modifiers = node_modifiers
@@ -42,6 +46,9 @@ class Machinations:
         for i, node in enumerate(nodes):
             node.id = i
 
+        for i, resource in enumerate(resources):
+            resource.id = i
+
         V = np.array([
             [
                 n.id,
@@ -50,7 +57,7 @@ class Machinations:
                 n.distribution_mode.value,
                 n.output_mode.value,
                 n.quotient,
-                resource_dict[n.resource_type].id if n.resource_type else -1
+                n.resource_type.id if n.resource_type else -1
             ]
             for n in nodes
         ], dtype=float)
@@ -82,10 +89,6 @@ class Machinations:
             e.predicate.id = i
             predicates.append(e.predicate.f)
 
-        resource_dict = {}
-        for i, resource in enumerate(resources):
-            resource.id = i
-            resource_dict[resource.name] = resource
 
         # Resource connections
         E_R = np.array([
@@ -93,7 +96,7 @@ class Machinations:
                 c.id,
                 c.src.id,
                 c.dst.id,
-                resource_dict[c.resource_type].id,
+                c.resource_type.id,
                 c.predicate.id if c.predicate else -1,
                 c.weight,
             ]
@@ -106,7 +109,7 @@ class Machinations:
                 c.id,
                 c.src.id,
                 c.dst.id,
-                resource_dict[c.resource_type].id,
+                c.resource_type.id,
                 c.rate,
             ]
             for c in label_modifiers
@@ -118,7 +121,7 @@ class Machinations:
                 c.id,
                 c.src.id,
                 c.dst.id,
-                resource_dict[c.resource_type].id,
+                c.resource_type.id,
                 c.rate,
             ]
             for c in node_modifiers
@@ -143,7 +146,7 @@ class Machinations:
                 c.src.id,
                 c.dst.id,
                 c.predicate.id,
-                resource_dict[c.resource_type].id,
+                c.resource_type.id,
             ]
             for c in activators
         ], dtype=np.float64).reshape(-1, 5)
@@ -151,8 +154,7 @@ class Machinations:
         # Build the initial state for each node
         X = np.zeros((len(nodes), len(resources)), dtype=float)
         for node in nodes:
-            for resource_name, amount in node.initial_resources:
-                resource = resource_dict[resource_name]
+            for resource, amount in node.initial_resources:
                 X[node.id, resource.id] = float(amount)
 
         # Resource connection rates are part of the state
@@ -161,7 +163,9 @@ class Machinations:
             T_e[i] = float(connection.rate)
 
         return cls(
+            resources,
             nodes,
+            connections,
             resource_connections,
             label_modifiers,
             node_modifiers,

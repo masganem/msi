@@ -110,7 +110,7 @@ class Connection:
         self.weight = 1.0
 
 class ResourceConnection(Connection):
-    def __init__(self, src: Node, dst: Node, resource_type: str, rate=1.0, predicate = None, weight = 1.0):
+    def __init__(self, src: Node, dst: Node, resource_type: Resource, rate=1.0, predicate = None, weight = 1.0):
         super().__init__(src, dst)
         self.type = ElementType.RESOURCE_CONNECTION
         # TODO: Model this as an actual random variable...
@@ -122,14 +122,14 @@ class ResourceConnection(Connection):
         self.weight = weight
 
 class LabelModifier(Connection):
-    def __init__(self, src: Node, dst: Connection, resource_type: str, rate=1.0):
+    def __init__(self, src: Node, dst: Connection, resource_type: Resource, rate=1.0):
         super().__init__(src, dst)
         self.type = ElementType.LABEL_MODIFIER
         self.rate = rate
         self.resource_type = resource_type
 
 class NodeModifier(Connection):
-    def __init__(self, src: Node, dst: Node, resource_type: str, rate=1.0):
+    def __init__(self, src: Node, dst: Node, resource_type: Resource, rate=1.0):
         super().__init__(src, dst)
         self.type = ElementType.NODE_MODIFIER
         self.rate = rate
@@ -145,7 +145,7 @@ class Trigger(Connection):
         self.weight = weight
 
 class Activator(Connection):
-    def __init__(self, src: Node, dst: Node, predicate: Predicate, resource_type: str):
+    def __init__(self, src: Node, dst: Node, predicate: Predicate, resource_type: Resource):
         super().__init__(src, dst)
         self.type = ElementType.ACTIVATOR
         self.predicate = predicate
