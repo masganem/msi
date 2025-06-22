@@ -108,6 +108,7 @@ class Machinations:
                     c.src.id, # u
                     c.dst.id, # v
                     c.predicate.id, # P
+                    resource_dict[c.resource_type].id, # r
                 ]) for c in activators], dtype=float)
 
         # Build the initial state for each node

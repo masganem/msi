@@ -1,23 +1,26 @@
-from numba import jit
+from numba import njit
 import numpy as np
 
 # TODO: jesus christ, this function signature... too ugly... 
-@jit
-def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied):
+@njit
+def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predicates):
     # Evaluate activators
     V_blocked = np.zeros(V.shape[0], dtype=np.bool_)
-    for i in range(E_A.shape[0])
+    for i in range(E_A.shape[0]):
         edge_id = int(E_A[i, 0])
-        dest    = int(E_A[i, 1])
-        src     = int(E_A[i, 2])
-        # TODO: Call predicate and block accordingly
+        src     = int(E_A[i, 1])
+        dest    = int(E_A[i, 2])
+        pred_id     = int(E_A[i, 3])
+        res_idx     = int(E_A[i, 4])
+        if not predicates[pred_id](X[src, res_idx]):
+            V_blocked[dest] = 1
 
     # Evaluate triggers
     V_targeted = np.zeros(V.shape[0], dtype=np.bool_)
-    for i in range(E_G.shape[0])
+    for i in range(E_G.shape[0]):
         edge_id = int(E_G[i, 0])
-        dest    = int(E_G[i, 1])
-        src     = int(E_G[i, 2])
+        src     = int(E_A[i, 1])
+        dest    = int(E_A[i, 2])
         if V_satisfied[src]:
             V[targeted] = True
     
@@ -30,6 +33,8 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied):
             if V[i, 3] == 1:
                 # TODO: Set random temporary state. How to think about quotient/weight here? Should I be doing quotient/weight? What random functions are usable in Numba?
                 # X[i, int(V[i, 5])] = ...
+                continue
+            continue
 
     # Run random gates
 
@@ -42,7 +47,6 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied):
     V_satisfied = np.ones(V.shape[0], dtype=np.bool_)
     for i in range(E_R.shape[0]):
         if E_R_active[i]:
-            # TODO: implement "fail if not enough resources in source"
             edge_id = int(E_R[i, 0])
             src     = int(E_R[i, 1])
             dest    = int(E_R[i, 2])

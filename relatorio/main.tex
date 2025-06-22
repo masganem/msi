@@ -17,10 +17,10 @@
 \setmainfont{Fira Sans}
 \setsansfont{Fira Sans}
 \setmonofont[
-  UprightFont   = *-Regular,
-  BoldFont      = *-Bold,
-  ItalicFont    = *-Regular,    % <-- force regular to be used as “italic”
-  BoldItalicFont= *-Bold        % <-- or omit if you don’t need Bold Italic
+  UprightFont   = *,
+  BoldFont      = *,
+  ItalicFont    = *,    % <-- force regular to be used as “italic”
+  BoldItalicFont= *% <-- or omit if you don’t need Bold Italic
 ]{Fira Code}
 \usepackage[utf8]{inputenc} % optional with XeLaTeX, but safe
 \usepackage[brazil]{babel}
@@ -145,9 +145,9 @@ O conjunto $E^S$ define as \textbf{conexões de estado}. Essas, por sua vez, se 
     % \note{I think we can just infer whether a node is activatable from the current state of activators and other nodes}
 \end{outline}
 
-No caso de \textit{gates}, valem as seguintes regras particulares: as únicas conexões que partem de \textit{gates} são conexões de recursos e gatilhos. Ainda, suas saídas podem ser condicionais ou aleatórias. Com saídas condicionais, cada conexão $e \in E^G \cup E^R$ partindo de uma \textit{gate} $v$ é rotulada por uma condição $P_e = f(x_v)$. Com saídas aleatórias, os rótulos são pesos $p_e$, avaliados contra o quociente $q_e$ para decidir qual conexão será ativada quando o nó for ativado.
+No caso de \textit{gates}, valem as seguintes regras particulares: as únicas conexões que partem de \textit{gates} são conexões de recursos e gatilhos. Ainda, suas saídas podem ser condicionais ou aleatórias. Com saídas condicionais, cada conexão $e \in E^G \cup E^R$ partindo de uma \textit{gate} $v$ é rotulada por uma condição $P_e = f(x_v)$. Com saídas aleatórias, os rótulos são pesos $p_e$, avaliados contra o quociente $q_v$ para decidir qual conexão será ativada quando o nó for ativado.
 
-Para \textit{gates} do modo de distribuição não - determinístico, um valor é amostrado aleatoriamente considerando um total (ou quociente) $q_e$ a cada turno, avaliado contra os pesos $p_e$ ou condições $P_e$ de cada uma de suas saídas para decidir qual será ativada. No caso determinístico, o valor utilizado é o total de recursos transferidos pelo nó até o instante $t$.
+Para \textit{gates} do modo de distribuição não - determinístico, um valor é amostrado aleatoriamente considerando um total (ou quociente) $q_v$ a cada turno, avaliado contra os pesos $p_e$ ou condições $P_e$ de cada uma de suas saídas para decidir qual será ativada. No caso determinístico, o valor utilizado é o total de recursos transferidos pelo nó até o instante $t$.
 
 \subsubsection{Dinâmica}
 \label{m:modeling:dynamics}
