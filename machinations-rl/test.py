@@ -1,5 +1,7 @@
 from machinations import Machinations
-from definitions import *
+from render import Renderer
+from machinations.definitions import *
+import pickle, pathlib
 
 r1 = Resource("HP")
 r2 = Resource("Mana")
@@ -21,4 +23,14 @@ m = Machinations.load((
     [r1, r2],
 ))
 
-print(m)
+r = Renderer(m)
+
+# -----------------------------------------------------------------------
+# Export the Machinations model so that it can be rendered later.
+# -----------------------------------------------------------------------
+
+_pkl_path = pathlib.Path("machinations.pkl")
+with _pkl_path.open("wb") as _fp:
+    pickle.dump(m, _fp)
+
+print(f"Machinations model written to {_pkl_path}")

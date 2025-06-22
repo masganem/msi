@@ -4,6 +4,9 @@ import numpy as np
 # TODO: jesus christ, this function signature... too ugly... 
 @njit
 def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predicates):
+    # Placeholder
+    V_pending = np.zeros(V.shape[0], dtype=np.bool_)
+
     # Evaluate activators
     V_blocked = np.zeros(V.shape[0], dtype=np.bool_)
     for i in range(E_A.shape[0]):
@@ -22,7 +25,7 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predica
         src     = int(E_A[i, 1])
         dest    = int(E_A[i, 2])
         if V_satisfied[src]:
-            V[targeted] = True
+            V_targeted[i] = True
     
     V_active = np.zeros(V.shape[0], dtype=np.bool_)
     for i in range(V.shape[0]):
@@ -59,7 +62,6 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predica
             X[dest, res_idx] += amount
         else:
             V_satisfied[dest] = False
-
     # Update resource edge rates
 
     # Update node states per node modifiers
