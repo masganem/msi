@@ -141,24 +141,45 @@ class MachinationsScene(Scene):
             arrow.set_z_index(-1)
             arrow_label = Tex(c.name, font_size=20, color=BLACK).move_to(arrow.points[len(arrow.points)//2] + UP * 0.175)
 
+            # Display rate as label + numeric value for easy in-place updating
             if hasattr(c, "rate"):
-                connection_rate = Integer(c.rate, font_size=20, color=BLACK).move_to(arrow.points[len(arrow.points)//2] + DOWN * 0.175)
-                rate_displays[c.id] = connection_rate
-                self.add(connection_rate)
+                label_tex = Tex("$T_{E_" + str(c.id) + "} =$", font_size=16, color=BLACK)
+                value_num = Integer(c.rate, font_size=16, color=BLACK)
+                value_num.next_to(label_tex, RIGHT, buff=0.05)
 
-            if hasattr(c, "predicate") and c.predicate != None:
-                self.add(Tex(str(c.predicate), font_size=20, color=BLACK).move_to(arrow.points[len(arrow.points)//2] + DOWN * 0.175))
+                group_pos = arrow.points[len(arrow.points)//2] + DOWN * 0.175
+                VGroup(label_tex, value_num).move_to(group_pos)
+
+                rate_displays[c.id] = value_num  # store the numeric part for updates
+                self.add(label_tex, value_num)
+
+            # Predicate label (static)
+            if hasattr(c, "predicate") and c.predicate is not None:
+                # Remove existing $ delimiters from predicate repr to avoid nested math environments
+                pred_body = str(c.predicate).strip("$")
+                pred_text = "$P_{E_" + str(c.id) + "}\;=\;(" + pred_body + ")$"
+                pred_tex = Tex(pred_text, font_size=16, color=BLACK)
+                offset_factor = 2 if hasattr(c, "rate") else 1
+                pred_tex.move_to(arrow.points[len(arrow.points)//2] + DOWN * 0.175 * offset_factor)
+                self.add(pred_tex)
             self.add(arrow, arrow_dot, arrow_label)
 
         for step in renderer.history:
             t, X, T_e, V_active, E_R_active, E_G_active = step.values()
-
+            print(f"{m.V_active=}")
 
             animations = [time_display.animate.set_value(t)]
+            self.play(*animations, run_time=0.5)
+
+            animations = []
+            for i, row in enumerate(node_displays):
+                if m.V_satisfied[i]:
+                    animations.append(row.animate.set_fill(GREEN))
+            self.play(*animations, run_time=0.5, rate_func=there_and_back)
 
             # Show random gates generating
             for i,row in enumerate(value_displays):
-                if m.nodes[i].type == ElementType.GATE:
+                if m.nodes[i].type == ElementType.GATE and m.nodes[i].distribution_mode == DistributionMode.NONDETERMINISTIC:
                     for j,col in enumerate(row):
                         if col:
                             animations.append(col.animate.set_value(X[i,j]))
@@ -176,24 +197,23 @@ class MachinationsScene(Scene):
             animations = []
             for i, row in enumerate(V_active):
                 if row:
-                    animations.append(node_displays[i].animate.set_stroke_width(3))
+                    animations.append(node_displays[i].animate.set_stroke_width(5))
             for i, row in enumerate(E_R_active):
                 if row:
-                    arrow = connection_displays[i]
-                    animations.append(arrow.animate.set_stroke_width(3))
+                    arrow = connection_displays[m.resource_connections[i].id]
+                    animations.append(arrow.animate.set_stroke_width(5))
                     animations.append(arrow.tip.animate.move_to(arrow.points[-1]))
             if animations:
                 self.play(*animations, run_time=1.0, rate_func=there_and_back)
 
             animations = []
-            for i,row in enumerate(value_displays):
-                if m.nodes[i].type == ElementType.POOL:
-                    for j,col in enumerate(row):
-                        if col:
-                            animations.append(col.animate.set_value(X[i,j]))
-            for i,row in enumerate(T_e):
-                j = m.resource_connections[i].id
+            for i, row in enumerate(value_displays):
+                for j, col in enumerate(row):
+                    if col:
+                        animations.append(col.animate.set_value(X[i,j]))
+            for i, row in enumerate(T_e):
+                conn_id = m.resource_connections[i].id
                 if row:
-                    animations.append(rate_displays[j].animate.set_value(row))
+                    animations.append(rate_displays[conn_id].animate.set_value(row))
             self.play(*animations, run_time=0.5)
 

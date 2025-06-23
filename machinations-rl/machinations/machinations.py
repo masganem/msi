@@ -159,13 +159,13 @@ class Machinations:
         ], dtype=np.float64).reshape(-1, 5)
 
         # Build the initial state for each node
-        X = np.zeros((len(nodes), len(resources)), dtype=float)
+        X = np.zeros((len(nodes), len(resources)), dtype=np.float64)
         for node in nodes:
             for resource, amount in node.initial_resources:
                 X[node.id, resource.id] = float(amount)
 
         # Resource connection rates are part of the state
-        T_e = np.zeros((len(resource_connections),), dtype=float)
+        T_e = np.zeros((len(resource_connections),), dtype=np.float64)
         for i, connection in enumerate(resource_connections):
             T_e[i] = float(connection.rate)
 

@@ -31,19 +31,20 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
 
     # Evaluate triggers
     V_targeted = np.zeros(V.shape[0], dtype=np.bool_)
+    E_G_active[:] = np.zeros(E_G.shape[0], dtype=np.bool_)
+
+    # Pass 1: triggers originating from pools
     for i in range(E_G.shape[0]):
-        edge_id = int(E_G[i, 0])
-        src     = int(E_G[i, 1])
-        dest    = int(E_G[i, 2])
-        if V_satisfied[src]:
-            V_targeted[dest] = True
-            E_G_active[i] = True
-        else:
-            V_targeted[dest] = False
-            E_G_active[i] = False
+        src  = int(E_G[i, 1])
+        dest = int(E_G[i, 2])
+
+        # Pools have V[src, 2] == 0 (see ElementType.POOL)
+        if V[src, 2] == 0:
+            if V_satisfied[src]:
+                E_G_active[i] = True
+                V_targeted[dest] = True
 
     for i in range(V.shape[0]):
-        V_active[i] = (V[i, 1] == 1 or V_pending[i] or V_targeted[i]) and not V_blocked[i]
         # Gate
         if V[i, 2] == 1:
             # Nondeterministic
@@ -52,46 +53,82 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
                 res_idx = int(V[i, 6])
                 X[i, res_idx] = randint(0, int(V[i, 5]))
             
-            # Triggers leaving from gate
-            for j, e in enumerate(list(E_G)):
-                src_id = int(e[1])
-                dst_id = int(e[2])
-                pred_id = int(e[4])
-                if src_id == int(V[i, 0]):
-                    if apply_pred(X[src_id, res_idx], pred_ops[pred_id], pred_cs[pred_id]):
-                        V_active[dst_id] = True
-                        E_G_active[j] = True
+            # Triggers leaving from this gate
+            for j in range(E_G.shape[0]):
+                if int(E_G[j, 1]) != int(V[i, 0]):
+                    continue  # Not coming from this gate
+
+                dst_id   = int(E_G[j, 2])
+                pred_idx = int(E_G[j, 3])
+
+                # Gates refer to their own single resource type stored in V[i, 6]
+                res_idx = int(V[i, 6])
+
+                # Fire trigger if predicate holds (or no predicate defined)
+                if pred_idx == -1 or apply_pred(X[i, res_idx], pred_ops[pred_idx], pred_cs[pred_idx]):
+                    E_G_active[j] = True
+                    V_targeted[dst_id] = True
 
             # Resource connections leaving from gate
 
+        # Compute active nodes for the current iteration (will be recomputed for all later)
+        V_active[i] = (V[i, 1] == 1 or V_pending[i] or V_targeted[i]) and not V_blocked[i]
 
-    # Find active resource edges
+    # Re-evaluate active state for every node now that all triggers have been processed.
+    for i in range(V.shape[0]):
+        V_active[i] = (V[i, 1] == 1 or V_pending[i] or V_targeted[i]) and not V_blocked[i]
+
+    # ------------------------------------------------------------
+    # Resource connections – two-phase evaluation
+    #   1. Edges WITHOUT predicate: require destination firing.
+    #   2. Edges WITH    predicate: evaluated AFTER phase-1 transfers, so
+    #      newly received resources can immediately enable subsequent flows.
+    # ------------------------------------------------------------
+
+    E_R_active[:]    = np.zeros(E_R.shape[0], dtype=np.bool_)
+    E_R_satisfied    = np.zeros(E_R.shape[0], dtype=np.bool_)
+
+    # Phase 1 – no-predicate edges (dest must be active)
     for i in range(E_R.shape[0]):
-        src_id = int(E_R[i, 1])
+        pred_id  = int(E_R[i, 4])
+        if pred_id != -1:
+            continue  # handled in phase-2
+
+        dest_id  = int(E_R[i, 2])
+        if not V_active[dest_id]:
+            continue  # destination not firing – cannot transfer this edge
+
+        src_id  = int(E_R[i, 1])
         res_idx = int(E_R[i, 3])
-        pred_id = int(E_R[i, 4])
-        if pred_id == -1: # No predicate
-            E_R_active[i] = V_active[int(E_R[i, 2])] # Transfers if destination is firing
-        else:
-            E_R_active[i] = V_active[int(E_R[i, 2])] and apply_pred(X[src_id, res_idx], pred_ops[pred_id], pred_cs[pred_id]) # Transfers if destination is firing and predicate is true
+        amount  = T_e[i]
 
-    # Transfer resources
-    E_R_satisfied = np.ones(E_R.shape[0], dtype=np.bool_)
-    for i in range(E_R.shape[0]):
-        if E_R_active[i]:
-            edge_id = int(E_R[i, 0])
-            src     = int(E_R[i, 1])
-            dest    = int(E_R[i, 2])
-            res_idx = int(E_R[i, 3])
-            amount = T_e[edge_id]
-            if X[src, res_idx] < amount:
-                E_R_satisfied[i] = False
-                continue
-            X[src,  res_idx] -= amount
-            X[dest, res_idx] += amount
+        E_R_active[i] = True
+        if X[src_id, res_idx] >= amount:
+            X[src_id, res_idx]  -= amount
+            X[dest_id, res_idx] += amount
             E_R_satisfied[i] = True
-        else:
-            E_R_satisfied[i] = False
+
+    # Phase 2 – predicate edges (destination activity irrelevant)
+    for i in range(E_R.shape[0]):
+        pred_id  = int(E_R[i, 4])
+        if pred_id == -1:
+            continue  # already handled in phase-1
+
+        src_id  = int(E_R[i, 1])
+        dest_id = int(E_R[i, 2])
+        res_idx = int(E_R[i, 3])
+
+        if not apply_pred(X[src_id, res_idx], pred_ops[pred_id], pred_cs[pred_id]):
+            continue  # predicate failed – no transfer
+
+        amount = T_e[i]
+
+        E_R_active[i] = True
+        if X[src_id, res_idx] >= amount:
+            X[src_id, res_idx]  -= amount
+            X[dest_id, res_idx] += amount
+            E_R_satisfied[i] = True
+        # else: not enough resource – E_R_satisfied remains False
 
     V_satisfied[:] = np.ones(V.shape[0], dtype=np.bool_)
 

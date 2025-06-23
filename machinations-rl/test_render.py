@@ -22,10 +22,10 @@ for i, node in enumerate(m.nodes):
     x = radius * math.cos(angle)
     y = radius * math.sin(angle)
     node.pos = (x, y)  # type: ignore[attr-defined]
-    node.name = "$V_{" + str(i) + "}$"
+    node.name = "$V_{" + str(node.id) + "}$"
 
 for i, c in enumerate(m.connections):
-    c.name = "$E_{" + str(i) + "}$"
+    c.name = "$E_{" + str(c.id) + "}$"
 
 for i, resource in enumerate(m.resources):
     if resource.name == "HP":
@@ -39,7 +39,7 @@ _renderer_pkl = pathlib.Path("render") / "renderer.pkl"
 with _renderer_pkl.open("wb") as _fp:
     pickle.dump(r, _fp)
 
-quality = "l"
+quality = "h"
 cmd = ["manim", f"-q{quality}", "render/scene.py", "MachinationsScene"]
 proc = subprocess.Popen(cmd, preexec_fn=os.setsid)
 

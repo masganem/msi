@@ -8,7 +8,7 @@ r1 = Resource("HP")
 r2 = Resource("Mana")
 luck = Resource("Luck")
 
-n1 = Pool(FiringMode.AUTOMATIC, [(r1, 10)])
+n1 = Pool(FiringMode.PASSIVE, [(r1, 10)])
 n2 = Pool(FiringMode.PASSIVE, [(r2, 5)])
 n3 = Gate(FiringMode.AUTOMATIC, DistributionMode.NONDETERMINISTIC, 6, luck)
 n4 = Pool(FiringMode.PASSIVE, [(r1, 1)])
@@ -21,12 +21,13 @@ e1 = ResourceConnection(
 e2 = ResourceConnection(
         n2, n1, r2, 1.0
     )
-p1 = Predicate(">", 3)
-e3 = Activator(n4, n1, p1, r1)
-e4 = Trigger(n3, n2, Predicate("<", 5))
+e3 = ResourceConnection(
+        n5, n4, r2, 15.0, Predicate(">=", 15)
+    )
+e4 = Trigger(n3, n2, Predicate("<=", 3))
 e5 = Trigger(n2, n5)
 e6 = ResourceConnection(
-        n6, n5, r2, 3.0
+        n6, n5, r2, 5.0
     )
 
 m = Machinations.load((
