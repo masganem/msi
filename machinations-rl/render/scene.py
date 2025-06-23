@@ -47,11 +47,11 @@ def random_rotation_matrix():
 
 class MachinationsScene(Scene):
     def construct(self):
-        self.camera.background_color = "#111111"
+        self.camera.background_color = WHITE
         assert renderer is not None  # for static type checkers
         m = renderer.model
-        time_display = Integer(0, font_size=24).move_to(3*DOWN+3.5*RIGHT)
-        self.add(Tex("$t =$", font_size=24).next_to(time_display, direction=LEFT, buff=.1))
+        time_display = Integer(0, font_size=20, color=BLACK).move_to(3*DOWN+3.5*RIGHT)
+        self.add(Tex("$t =$", font_size=20, color=BLACK).next_to(time_display, direction=LEFT, buff=.1))
         self.add(time_display)
         node_displays = [None for _ in m.nodes]
         value_displays = [
@@ -59,67 +59,98 @@ class MachinationsScene(Scene):
             for _ in m.nodes
         ]
         rate_displays = [None for _ in m.connections]
-        E_R_displays = [None for _ in m.resource_connections]
+        connection_displays = [None for _ in m.connections]
 
         # Draw static graph based on renderer.model
         for i, (node, resources) in enumerate(zip(m.nodes, m.X)):
             x, y = getattr(node, "pos", (0, 0))
-            color = getattr(node, "color", "WHITE")
+            color = getattr(node, "color", "BLACK")
 
             if node.type == ElementType.GATE:
-                dot = Square(side_length=0.7, color=color, stroke_width=2).move_to([x, y, 0]).rotate(3.14/4)
+                dot = Square(side_length=0.7, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0]).rotate(3.14/4)
             else:
-                dot = Circle(radius=0.35, color=color, stroke_width=2).move_to([x, y, 0])
-
+                dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0])
+            dot.set_fill("#f8f8f8")
+            dot.set_z_index(1)
             node_displays[i] = dot
 
-            label = Tex(node.name, font_size=24).next_to(dot, direction=ORIGIN)
+            label = Tex(node.name, font_size=20, color=BLACK).next_to(dot, direction=ORIGIN)
+            label.set_z_index(2)
             self.add(dot, label)
 
             if node.firing_mode == FiringMode.AUTOMATIC:
-                mode_label = Tex("*", font_size=24).move_to([x+0.33,y+0.33,0])
+                mode_label = Tex("*", font_size=20, color=BLACK).move_to([x+0.33,y+0.33,0])
                 self.add(mode_label)
 
+            k = 0
             for j, amount in enumerate(resources):
+                if node.type == ElementType.GATE and not m.resources[j].id == node.resource_type.id:
+                    continue
                 sq = (
-                    Square(side_length=0.35, fill_opacity=0.7)
+                    Square(side_length=0.25, fill_opacity=0.9)
                         .set_stroke(m.resources[j].color, width=2)
                         .set_fill(m.resources[j].color)
-                        .next_to(dot, DOWN, buff=0.25)
-                        .shift(RIGHT * (j-0.5) * 0.4)
+                        .next_to(dot, DOWN, buff=0.05)
+                        .shift(RIGHT * k * 0.3)
                     )
                 sq_label = (
-                        Text(m.resources[j].name, font_size=24)
-                        .next_to(sq, direction=UP, buff=0.01)
-                        .scale(0.4)
+                        Text(m.resources[j].name, font_size=20, color=m.resources[j].color)
+                        .next_to(sq, direction=DOWN, buff=-0.04)
+                        .scale(0.3)
                     )
                 sq_value = (
-                        Integer(resources[j], font_size=24)
+                        Integer(resources[j], font_size=20)
                         .next_to(sq, direction=ORIGIN)
                         .scale(0.6)
                     )
                 value_displays[i][j]=sq_value
                 self.add(sq, sq_label, sq_value)
+                k += 1
 
-        for c in m.resource_connections:
+        for c in m.connections:
+            print("Rendering static setup for connection:")
+            print(c.src.name, "->", c.dst.name)
             c1 = np.array(getattr(c.src,  "pos", (0,0)), float)
             c2 = np.array(getattr(c.dst,  "pos", (0,0)), float)
             p1, p2 = chord_endpoints(c1, c2)
-            arrow = CurvedArrow(
-                start_point=[*p1, 0],
-                end_point=[*c2, 0],
-                stroke_width=2,
-                color=c.resource_type.color,
-            )
-            arrow.tip.move_to(arrow.points[-2]).scale(0.5)
-            E_R_displays[c.id] = arrow
+            arrow_color = c.resource_type.color if hasattr(c, "resource_type") and c.resource_type else BLACK
+            if c.type == ElementType.TRIGGER:
+                arrow = Arrow(
+                    start=[*p1, 0],
+                    end=[*c2, 0],
+                    stroke_width=0,
+                    color=arrow_color,
+                )
+                dl = DashedLine(
+                    start=[*p1, 0],
+                    end=[*c2, 0],
+                    stroke_width=1,
+                    color=arrow_color,
+                )
+                self.add(dl, Tex("*", font_size=20, color=BLACK).move_to(arrow.points[-2]))
+                arrow.tip.scale(0.5)
+            else:
+                arrow = CurvedArrow(
+                    start_point=[*p1, 0],
+                    end_point=[*c2, 0],
+                    stroke_width=2,
+                    color=arrow_color,
+                )
+                arrow.tip.move_to(arrow.points[-2]).scale(0.5)
+                arrow_dot = Circle(radius=0.02, stroke_width=0, color=BLACK, fill_opacity=1).move_to(arrow.points[len(arrow.points)//2])
+                arrow_dot.set_fill(arrow_color)
+            connection_displays[c.id] = arrow
             arrow.set_z_index(-1)
-            arrow_dot = Circle(radius=0.035, color=WHITE, stroke_width=1).move_to(arrow.points[len(arrow.points)//2])
-            arrow_label = Tex(c.name, font_size=24).move_to(arrow.points[len(arrow.points)//2] + UP * 0.175)
-            connection_rate = Integer(c.rate, font_size=24).move_to(arrow.points[len(arrow.points)//2] + DOWN * 0.175)
-            rate_displays[c.id] = connection_rate
-            self.add(arrow, arrow_dot, arrow_label, connection_rate)
+            arrow_label = Tex(c.name, font_size=20, color=BLACK).move_to(arrow.points[len(arrow.points)//2] + UP * 0.175)
 
+            if hasattr(c, "rate"):
+                connection_rate = Integer(c.rate, font_size=20, color=BLACK).move_to(arrow.points[len(arrow.points)//2] + DOWN * 0.175)
+                rate_displays[c.id] = connection_rate
+                self.add(connection_rate)
+
+            if hasattr(c, "predicate") and c.predicate != None:
+                self.add(Tex(str(c.predicate), font_size=20, color=BLACK).move_to(arrow.points[len(arrow.points)//2] + DOWN * 0.175))
+            self.add(arrow, arrow_dot, arrow_label)
 
         for step in renderer.history:
             t, X, T_e, V_active, E_R_active = step.values()
@@ -127,11 +158,11 @@ class MachinationsScene(Scene):
             animations = []
             for i, row in enumerate(V_active):
                 if row:
-                    animations.append(node_displays[i].animate.set_stroke_width(4))
+                    animations.append(node_displays[i].animate.set_stroke_width(3))
             for i, row in enumerate(E_R_active):
                 if row:
-                    arrow = E_R_displays[i]
-                    animations.append(arrow.animate.set_stroke_width(4))
+                    arrow = connection_displays[i]
+                    animations.append(arrow.animate.set_stroke_width(3))
                     animations.append(arrow.tip.animate.move_to(arrow.points[-1]))
             if animations:
                 self.play(*animations, run_time=1.0, rate_func=there_and_back)
@@ -139,7 +170,8 @@ class MachinationsScene(Scene):
             animations = [time_display.animate.set_value(t)]
             for i,row in enumerate(value_displays):
                 for j,col in enumerate(row):
-                    animations.append(col.animate.set_value(X[i,j]))
+                    if col:
+                        animations.append(col.animate.set_value(X[i,j]))
             for i,row in enumerate(rate_displays):
                 if row:
                     animations.append(row.animate.set_value(T_e[i]))

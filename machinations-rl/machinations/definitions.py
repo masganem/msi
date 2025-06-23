@@ -7,41 +7,15 @@ import numpy as np
 import operator
 
 class Predicate:
+    _map = {'==':0,'<':1,'<=':2,'>':3,'>=':4,'!=':5}
     def __init__(self, op: str, c: float):
-        self.id = None
-        """
-        op: either a string in ('==','<','<=','>','>=','!=')
-            or a binary function like operator.eq, operator.lt, etc.
-        c:  the constant to compare against
-
-        returns: an njit‐compiled function pred(x) -> bool
-        """
-        # Normalize op to a callable
-        if isinstance(op, str):
-            ops = {
-                '==': operator.eq,
-                '<':  operator.lt,
-                '<=': operator.le,
-                '>':  operator.gt,
-                '>=': operator.ge,
-                '!=': operator.ne,
-            }
-            try:
-                fn = ops[op]
-            except KeyError:
-                raise ValueError(f"Unsupported operator {op!r}")
-        elif callable(op):
-            fn = op
-        else:
-            raise TypeError("op must be a str or a callable")
-
-        # Build and compile the predicate
-        @njit
-        def pred(x):
-            return fn(x, c)
-
-        self.f = pred
-
+        try:
+            self.op_code = self._map[op]
+        except KeyError:
+            raise ValueError(f"bad op {op!r}")
+        self.c = c
+    def __repr__(self):
+        return f"${list(self._map)[self.op_code]}{self.c}$"
 
 class Resource:
     def __init__(self, name, unique = False):

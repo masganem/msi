@@ -19,7 +19,8 @@ class Machinations:
         T_e,
         V_pending,
         V_satisfied,
-        predicates,
+        pred_ops,
+        pred_cs,
         V_active,
         E_R_active,
     ):
@@ -36,7 +37,8 @@ class Machinations:
         self.E_R, self.E_T, self.E_N, self.E_G, self.E_A = E
         self.X = X
         self.T_e = T_e
-        self.predicates = predicates
+        self.pred_ops = pred_ops
+        self.pred_cs = pred_cs
         self.V_pending = V_pending
         self.V_satisfied = V_satisfied
         self.V_active = V_active
@@ -86,12 +88,11 @@ class Machinations:
             c for c in connections if c.type == ElementType.ACTIVATOR
         ]
 
-        predicates = []
-        for i, e in enumerate([
-            c for c in (resource_connections + triggers + activators) if c.predicate
-        ]):
-            e.predicate.id = i
-            predicates.append(e.predicate.f)
+        predicates = [c.predicate for c in connections if hasattr(c, "predicate") and c.predicate]
+        for idx, p in enumerate(predicates):
+            p.id = idx
+        pred_ops = np.array([p.op_code for p in predicates], dtype=np.int8)
+        pred_cs  = np.array([p.c       for p in predicates], dtype=np.float64)
 
 
         # Resource connections
@@ -181,7 +182,8 @@ class Machinations:
             T_e,
             np.zeros(V.shape[0], dtype=np.bool_),
             np.zeros(V.shape[0], dtype=np.bool_),
-            predicates,
+            pred_ops,
+            pred_cs,
             np.zeros(V.shape[0], dtype=np.bool_),
             np.zeros(E_R.shape[0], dtype=np.bool_),
         )
@@ -190,7 +192,7 @@ class Machinations:
         step_jit(
             self.V, self.E_R, self.E_T, self.E_N, self.E_G,
             self.E_A, self.X, self.T_e, self.V_pending,
-            self.V_satisfied, self.predicates, self.V_active, self.E_R_active
+            self.V_satisfied, self.pred_ops, self.pred_cs, self.V_active, self.E_R_active
         )
         self.t += 1
         pass

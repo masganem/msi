@@ -12,7 +12,7 @@ with _model_pkl.open("rb") as _fp:
     m: Machinations = pickle.load(_fp)
 
 r = Renderer(m)
-r.render(steps=3)  # adjust steps if desired
+r.render(steps=10)  # adjust steps if desired
 
 n_nodes = len(m.nodes)
 radius = 2.0
@@ -32,6 +32,8 @@ for i, resource in enumerate(m.resources):
         resource.color = "#ff0000"
     elif resource.name == "Mana":
         resource.color = "#0000ff"
+    else:
+        resource.color = "#0f0f0f"
 
 _renderer_pkl = pathlib.Path("render") / "renderer.pkl"
 with _renderer_pkl.open("wb") as _fp:
