@@ -3,7 +3,7 @@ import numpy as np
 
 # TODO: jesus christ, this function signature... too ugly... 
 @njit
-def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predicates):
+def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predicates, V_active, E_R_active):
     # Placeholder
     V_pending = np.zeros(V.shape[0], dtype=np.bool_)
 
@@ -27,7 +27,6 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predica
         if V_satisfied[src]:
             V_targeted[i] = True
     
-    V_active = np.zeros(V.shape[0], dtype=np.bool_)
     for i in range(V.shape[0]):
         V_active[i] = (V[i, 1] == 1 or V_pending[i] or V_targeted[i]) and not V_blocked[i]
         # Gate
@@ -42,7 +41,6 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predica
     # Run random gates
 
     # Find active resource edges
-    E_R_active = np.zeros(E_R.shape[0], dtype=np.bool_)
     for i in range(E_R.shape[0]):
         E_R_active[i] = V_active[int(E_R[i, 2])]
 
@@ -66,4 +64,4 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, predica
 
     # Update node states per node modifiers
 
-    return X, T_e, V_pending, V_satisfied
+    return

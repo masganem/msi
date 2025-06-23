@@ -21,6 +21,8 @@ class Renderer:
             't': self.model.t,
             'X': self.model.X.copy(),
             'T_e': self.model.T_e.copy(),
+            'V_active': self.model.V_active.copy(),
+            'E_R_active': self.model.E_R_active.copy(),
         })
 
     def simulate(self, steps: int) -> None:

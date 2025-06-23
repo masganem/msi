@@ -19,7 +19,9 @@ class Machinations:
         T_e,
         V_pending,
         V_satisfied,
-        predicates
+        predicates,
+        V_active,
+        E_R_active,
     ):
         self.t = 0
         self.resources = resources
@@ -37,6 +39,8 @@ class Machinations:
         self.predicates = predicates
         self.V_pending = V_pending
         self.V_satisfied = V_satisfied
+        self.V_active = V_active
+        self.E_R_active = E_R_active
 
     @classmethod
     def load(cls, d: Diagram):
@@ -178,13 +182,15 @@ class Machinations:
             np.zeros(V.shape[0], dtype=np.bool_),
             np.zeros(V.shape[0], dtype=np.bool_),
             predicates,
+            np.zeros(V.shape[0], dtype=np.bool_),
+            np.zeros(E_R.shape[0], dtype=np.bool_),
         )
 
     def step(self):
-        X_new, T_e_new, V_pending, V_satisfied = step_jit(
+        step_jit(
             self.V, self.E_R, self.E_T, self.E_N, self.E_G,
             self.E_A, self.X, self.T_e, self.V_pending,
-            self.V_satisfied, self.predicates
+            self.V_satisfied, self.predicates, self.V_active, self.E_R_active
         )
         self.t += 1
         pass
