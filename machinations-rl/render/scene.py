@@ -99,7 +99,7 @@ class MachinationsScene(Scene):
                         .scale(0.3)
                     )
                 sq_value = (
-                        Integer(resources[j], font_size=20)
+                        Integer(amount, font_size=20)
                         .next_to(sq, direction=ORIGIN)
                         .scale(0.6)
                     )
@@ -108,8 +108,6 @@ class MachinationsScene(Scene):
                 k += 1
 
         for c in m.connections:
-            print("Rendering static setup for connection:")
-            print(c.src.name, "->", c.dst.name)
             c1 = np.array(getattr(c.src,  "pos", (0,0)), float)
             c2 = np.array(getattr(c.dst,  "pos", (0,0)), float)
             p1, p2 = chord_endpoints(c1, c2)
@@ -153,7 +151,25 @@ class MachinationsScene(Scene):
             self.add(arrow, arrow_dot, arrow_label)
 
         for step in renderer.history:
-            t, X, T_e, V_active, E_R_active = step.values()
+            t, X, T_e, V_active, E_R_active, E_G_active = step.values()
+
+            animations = [time_display.animate.set_value(t)]
+            # Show random gates generating
+            for i,row in enumerate(value_displays):
+                if m.nodes[i].type == ElementType.GATE:
+                    for j,col in enumerate(row):
+                        if col:
+                            animations.append(col.animate.set_value(X[i,j]))
+            if animations:
+                self.play(*animations, run_time=0.5)
+
+            animations = []
+            for i, row in enumerate(E_G_active):
+                if row:
+                    arrow = connection_displays[m.triggers[i].id]
+                    animations.append(arrow.animate.set_stroke_width(2))
+            if animations:
+                self.play(*animations, run_time=0.5, rate_func=there_and_back)
 
             animations = []
             for i, row in enumerate(V_active):
@@ -167,11 +183,12 @@ class MachinationsScene(Scene):
             if animations:
                 self.play(*animations, run_time=1.0, rate_func=there_and_back)
 
-            animations = [time_display.animate.set_value(t)]
+            animations = []
             for i,row in enumerate(value_displays):
-                for j,col in enumerate(row):
-                    if col:
-                        animations.append(col.animate.set_value(X[i,j]))
+                if m.nodes[i].type == ElementType.POOL:
+                    for j,col in enumerate(row):
+                        if col:
+                            animations.append(col.animate.set_value(X[i,j]))
             for i,row in enumerate(rate_displays):
                 if row:
                     animations.append(row.animate.set_value(T_e[i]))

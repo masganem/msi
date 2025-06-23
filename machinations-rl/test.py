@@ -18,13 +18,14 @@ e1 = ResourceConnection(
 e2 = ResourceConnection(
         n2, n1, r2, 1.0
     )
-p1 = Predicate("<", 3)
+p1 = Predicate(">", 3)
 e3 = Activator(n4, n1, p1, r1)
 e4 = Trigger(n3, n2, Predicate("<", 3))
+e5 = Trigger(n2, n4)
 
 m = Machinations.load((
     [n1, n2, n3, n4],
-    [e1, e2, e3, e4],
+    [e1, e2, e3, e4, e5],
     [r1, r2, luck],
 ))
 
