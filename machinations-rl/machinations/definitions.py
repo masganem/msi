@@ -33,11 +33,6 @@ class DistributionMode(Enum):
     DETERMINISTIC = 0
     NONDETERMINISTIC = 1
 
-class OutputMode(Enum):
-    ANY = -1
-    CONDITIONAL = 0
-    RANDOM = 1
-
 class ElementType(Enum):
     ANY = -1
     POOL = 0
@@ -55,7 +50,6 @@ class Node:
         self.firing_mode = firing_mode
         self.type = ElementType.ANY
         self.distribution_mode = DistributionMode.ANY 
-        self.output_mode = OutputMode.ANY
         self.quotient = -1
 
         self.initial_resources = initial_resources
@@ -67,11 +61,10 @@ class Pool(Node):
         self.type = ElementType.POOL
         
 class Gate(Node):
-    def __init__(self, firing_mode: FiringMode, distribution_mode: DistributionMode, output_mode: OutputMode, quotient: int, resource_type: str):
+    def __init__(self, firing_mode: FiringMode, distribution_mode: DistributionMode, quotient: int, resource_type: str):
         super().__init__(firing_mode)
         self.type = ElementType.GATE
         self.distribution_mode = distribution_mode
-        self.output_mode = output_mode
         self.quotient = quotient
         self.resource_type = resource_type
 

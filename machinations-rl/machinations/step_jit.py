@@ -53,16 +53,14 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
                 res_idx = int(V[i, 6])
                 X[i, res_idx] = randint(0, int(V[i, 5]))
 
-                # Conditional
-                if V[i, 4] == 0:
-                    for j, e in enumerate(list(E_G)):
-                        src_id = int(e[1])
-                        dst_id = int(e[2])
-                        pred_id = int(e[4])
-                        if src_id == int(V[i, 0]):
-                            if apply_pred(X[src_id, res_idx], pred_ops[pred_id], pred_cs[pred_id]):
-                                V_active[dst_id] = True
-                                E_G_active[j] = True
+            for j, e in enumerate(list(E_G)):
+                src_id = int(e[1])
+                dst_id = int(e[2])
+                pred_id = int(e[4])
+                if src_id == int(V[i, 0]):
+                    if apply_pred(X[src_id, res_idx], pred_ops[pred_id], pred_cs[pred_id]):
+                        V_active[dst_id] = True
+                        E_G_active[j] = True
 
     # Find active resource edges
     for i in range(E_R.shape[0]):

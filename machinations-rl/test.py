@@ -9,7 +9,7 @@ luck = Resource("Luck")
 
 n1 = Pool(FiringMode.AUTOMATIC, [(r1, 10)])
 n2 = Pool(FiringMode.PASSIVE, [(r2, 5)])
-n3 = Gate(FiringMode.AUTOMATIC, DistributionMode.NONDETERMINISTIC, OutputMode.CONDITIONAL, 6, luck)
+n3 = Gate(FiringMode.AUTOMATIC, DistributionMode.NONDETERMINISTIC, 6, luck)
 n4 = Pool(FiringMode.PASSIVE, [(r1, 1)])
 
 e1 = ResourceConnection(

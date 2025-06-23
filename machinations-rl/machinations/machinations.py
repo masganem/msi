@@ -63,7 +63,7 @@ class Machinations:
                 n.firing_mode.value,
                 n.type.value,
                 n.distribution_mode.value,
-                n.output_mode.value,
+                0, # Placeholder to not mess anything up trust me
                 n.quotient,
                 n.resource_type.id if n.resource_type else -1
             ]
