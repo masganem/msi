@@ -69,7 +69,7 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
         E_R_active[i] = V_active[int(E_R[i, 2])]
 
     # Transfer resources
-    V_satisfied = np.ones(V.shape[0], dtype=np.bool_)
+    E_R_satisfied = np.ones(E_R.shape[0], dtype=np.bool_)
     for i in range(E_R.shape[0]):
         if E_R_active[i]:
             edge_id = int(E_R[i, 0])
@@ -78,13 +78,28 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
             res_idx = int(E_R[i, 3])
             amount = T_e[edge_id]
             if X[src, res_idx] < amount:
-                V_satisfied[dest] = False
+                E_R_satisfied[i] = False
                 continue
             X[src,  res_idx] -= amount
             X[dest, res_idx] += amount
+            E_R_satisfied[i] = True
         else:
+            E_R_satisfied[i] = False
+
+    V_satisfied[:] = np.ones(V.shape[0], dtype=np.bool_)
+
+    # Track which nodes have at least one incoming resource connection
+    has_incoming = np.zeros(V.shape[0], dtype=np.bool_)
+    for j in range(E_R.shape[0]):
+        dest = int(E_R[j, 2])
+        has_incoming[dest] = True
+        if not E_R_satisfied[j]:
             V_satisfied[dest] = False
-    print(V_satisfied)
+
+    # Nodes with no incoming resource connections are considered unsatisfied
+    for i in range(V.shape[0]):
+        if not has_incoming[i]:
+            V_satisfied[i] = False
 
     # Update resource edge rates
 

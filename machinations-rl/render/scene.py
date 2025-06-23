@@ -153,7 +153,9 @@ class MachinationsScene(Scene):
         for step in renderer.history:
             t, X, T_e, V_active, E_R_active, E_G_active = step.values()
 
+
             animations = [time_display.animate.set_value(t)]
+
             # Show random gates generating
             for i,row in enumerate(value_displays):
                 if m.nodes[i].type == ElementType.GATE:

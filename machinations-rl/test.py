@@ -20,7 +20,7 @@ e2 = ResourceConnection(
     )
 p1 = Predicate(">", 3)
 e3 = Activator(n4, n1, p1, r1)
-e4 = Trigger(n3, n2, Predicate("<", 3))
+e4 = Trigger(n3, n2, Predicate("<", 5))
 e5 = Trigger(n2, n4)
 
 m = Machinations.load((

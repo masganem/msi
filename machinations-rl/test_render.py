@@ -12,7 +12,7 @@ with _model_pkl.open("rb") as _fp:
     m: Machinations = pickle.load(_fp)
 
 r = Renderer(m)
-r.render(steps=3)  # adjust steps if desired
+r.render(steps=8)  # adjust steps if desired
 
 n_nodes = len(m.nodes)
 radius = 2.0
