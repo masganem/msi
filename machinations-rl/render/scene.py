@@ -191,8 +191,9 @@ class MachinationsScene(Scene):
                     for j,col in enumerate(row):
                         if col:
                             animations.append(col.animate.set_value(X[i,j]))
-            for i,row in enumerate(rate_displays):
+            for i,row in enumerate(T_e):
+                j = m.resource_connections[i].id
                 if row:
-                    animations.append(row.animate.set_value(T_e[i]))
+                    animations.append(rate_displays[j].animate.set_value(row))
             self.play(*animations, run_time=0.5)
 

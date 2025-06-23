@@ -39,7 +39,7 @@ _renderer_pkl = pathlib.Path("render") / "renderer.pkl"
 with _renderer_pkl.open("wb") as _fp:
     pickle.dump(r, _fp)
 
-quality = "h"
+quality = "l"
 cmd = ["manim", f"-q{quality}", "render/scene.py", "MachinationsScene"]
 proc = subprocess.Popen(cmd, preexec_fn=os.setsid)
 

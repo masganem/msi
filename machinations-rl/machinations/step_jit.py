@@ -48,11 +48,11 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
         if V[i, 2] == 1:
             # Nondeterministic
             if V[i, 3] == 1:
-                # TODO: Set random temporary state. How to think about quotient/weight here? Should I be doing quotient/weight? What random functions are usable in Numba?
                 # Remember gates can only have one resource type
                 res_idx = int(V[i, 6])
                 X[i, res_idx] = randint(0, int(V[i, 5]))
-
+            
+            # Triggers leaving from gate
             for j, e in enumerate(list(E_G)):
                 src_id = int(e[1])
                 dst_id = int(e[2])
@@ -62,9 +62,18 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
                         V_active[dst_id] = True
                         E_G_active[j] = True
 
+            # Resource connections leaving from gate
+
+
     # Find active resource edges
     for i in range(E_R.shape[0]):
-        E_R_active[i] = V_active[int(E_R[i, 2])]
+        src_id = int(E_R[i, 1])
+        res_idx = int(E_R[i, 3])
+        pred_id = int(E_R[i, 4])
+        if pred_id == -1: # No predicate
+            E_R_active[i] = V_active[int(E_R[i, 2])] # Transfers if destination is firing
+        else:
+            E_R_active[i] = V_active[int(E_R[i, 2])] and apply_pred(X[src_id, res_idx], pred_ops[pred_id], pred_cs[pred_id]) # Transfers if destination is firing and predicate is true
 
     # Transfer resources
     E_R_satisfied = np.ones(E_R.shape[0], dtype=np.bool_)

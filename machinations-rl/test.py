@@ -1,3 +1,4 @@
+from math import inf
 from machinations import Machinations
 from render import Renderer
 from machinations.definitions import *
@@ -11,6 +12,8 @@ n1 = Pool(FiringMode.AUTOMATIC, [(r1, 10)])
 n2 = Pool(FiringMode.PASSIVE, [(r2, 5)])
 n3 = Gate(FiringMode.AUTOMATIC, DistributionMode.NONDETERMINISTIC, 6, luck)
 n4 = Pool(FiringMode.PASSIVE, [(r1, 1)])
+n5 = Gate(FiringMode.PASSIVE, DistributionMode.DETERMINISTIC, 6, r2)
+n6 = Pool(FiringMode.PASSIVE, [(r2, inf)])
 
 e1 = ResourceConnection(
         n1, n2, r1, 1.0
@@ -21,11 +24,14 @@ e2 = ResourceConnection(
 p1 = Predicate(">", 3)
 e3 = Activator(n4, n1, p1, r1)
 e4 = Trigger(n3, n2, Predicate("<", 5))
-e5 = Trigger(n2, n4)
+e5 = Trigger(n2, n5)
+e6 = ResourceConnection(
+        n6, n5, r2, 3.0
+    )
 
 m = Machinations.load((
-    [n1, n2, n3, n4],
-    [e1, e2, e3, e4, e5],
+    [n1, n2, n3, n4, n5, n6],
+    [e1, e2, e3, e4, e5, e6],
     [r1, r2, luck],
 ))
 
