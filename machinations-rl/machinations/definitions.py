@@ -77,7 +77,7 @@ class Connection:
         self.weight = 1.0
 
 class ResourceConnection(Connection):
-    def __init__(self, src: Node, dst: Node, resource_type: Resource, rate=1.0, predicate = None, weight = 1.0):
+    def __init__(self, src: Node, dst: Node, resource_type: Resource, rate=1.0, predicate = None):
         super().__init__(src, dst)
         self.type = ElementType.RESOURCE_CONNECTION
         # TODO: Model this as an actual random variable...
@@ -86,7 +86,6 @@ class ResourceConnection(Connection):
 
         # Only for gates
         self.predicate = predicate
-        self.weight = weight
 
 class LabelModifier(Connection):
     def __init__(self, src: Node, dst: Connection, resource_type: Resource, rate=1.0):
@@ -103,13 +102,16 @@ class NodeModifier(Connection):
         self.resource_type = resource_type
 
 class Trigger(Connection):
-    def __init__(self, src: Node, dst: Node, predicate = None, weight = 1.0):
+    def __init__(self, src: Node, dst: Node | Connection, predicate = None, weight = 1.0):
         super().__init__(src, dst)
         self.type = ElementType.TRIGGER
 
         # Only for gates
         self.predicate = predicate
         self.weight = weight
+
+        self.dst_type = dst.type
+        assert self.dst_type in [ElementType.RESOURCE_CONNECTION, ElementType.POOL, ElementType.GATE]
 
 class Activator(Connection):
     def __init__(self, src: Node, dst: Node, predicate: Predicate, resource_type: Resource):

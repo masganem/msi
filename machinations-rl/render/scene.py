@@ -1,5 +1,6 @@
-from manim import *
+from fractions import Fraction
 from random import random
+from manim import *
 import numpy as np
 
 # Making sure the project root is on sys.path so that 'render.renderer' resolves.
@@ -19,8 +20,7 @@ renderer: Renderer | None = globals().get("renderer")  # type: ignore
 # If Manim is spawned as a subprocess, we look for 'render/renderer.pkl'.
 _pkl = pathlib.Path(__file__).with_name("renderer.pkl")
 if _pkl.exists():
-    with _pkl.open("rb") as _fp:
-        renderer = pickle.load(_fp)
+    with _pkl.open("rb") as _fp: renderer = pickle.load(_fp)
 else:
     raise RuntimeError(
         "Machinations renderer not provided. Run test_render.py to create\n"
@@ -47,8 +47,8 @@ def random_rotation_matrix():
 
 class MachinationsScene(Scene):
     def construct(self):
-        self.camera.background_color = WHITE
         assert renderer is not None  # for static type checkers
+        self.camera.background_color = WHITE
         m = renderer.model
         time_display = Integer(0, font_size=20, color=BLACK).move_to(3*DOWN+3.5*RIGHT)
         self.add(Tex("$t =$", font_size=20, color=BLACK).next_to(time_display, direction=LEFT, buff=.1))
@@ -67,10 +67,10 @@ class MachinationsScene(Scene):
             color = getattr(node, "color", "BLACK")
 
             if node.type == ElementType.GATE:
-                dot = Square(side_length=0.7, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0]).rotate(3.14/4)
+                dot = Square(side_length=0.7, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0]).rotate(3.14/4)
             else:
-                dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0])
-            dot.set_fill("#f8f8f8")
+                dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0])
+            # dot.set_fill("#f8f8f8")
             dot.set_z_index(1)
             node_displays[i] = dot
 
@@ -108,8 +108,8 @@ class MachinationsScene(Scene):
                 k += 1
 
         for c in m.connections:
-            c1 = np.array(getattr(c.src,  "pos", (0,0)), float)
-            c2 = np.array(getattr(c.dst,  "pos", (0,0)), float)
+            c1 = np.array(getattr(c.src,  "pos", (0,0)), float)[:2]
+            c2 = np.array(getattr(c.dst,  "pos", (0,0)), float)[:2]
             p1, p2 = chord_endpoints(c1, c2)
             arrow_color = c.resource_type.color if hasattr(c, "resource_type") and c.resource_type else BLACK
             if c.type == ElementType.TRIGGER:
@@ -127,6 +127,21 @@ class MachinationsScene(Scene):
                 )
                 self.add(dl, Tex("*", font_size=20, color=BLACK).move_to(arrow.points[-2]))
                 arrow.tip.scale(0.5)
+
+                # Add dot + label in the middle for triggers as well
+                arrow_dot = (
+                    Circle(radius=0.14, stroke_width=2, color=arrow_color, fill_opacity=1)
+                    .set_fill(WHITE)
+                    .move_to(arrow.points[len(arrow.points)//2])
+                )
+                arrow_dot.set_z_index(20)
+
+                arrow_label = Tex(
+                    c.name,
+                    font_size=12,
+                    color=BLACK,
+                ).move_to(arrow_dot.get_center())
+                arrow_label.set_z_index(21)
             else:
                 arrow = CurvedArrow(
                     start_point=[*p1, 0],
@@ -135,22 +150,50 @@ class MachinationsScene(Scene):
                     color=arrow_color,
                 )
                 arrow.tip.move_to(arrow.points[-2]).scale(0.5)
-                arrow_dot = Circle(radius=0.02, stroke_width=0, color=BLACK, fill_opacity=1).move_to(arrow.points[len(arrow.points)//2])
-                arrow_dot.set_fill(arrow_color)
+
+                # Middle dot that will carry the edge label
+                arrow_dot = (
+                    Circle(radius=0.14, stroke_width=2, color=arrow_color, fill_opacity=1)
+                    .set_fill(WHITE)
+                    .move_to(arrow.points[len(arrow.points)//2])
+                )
+                arrow_dot.set_z_index(20)
+
+                # Label (e.g. $E_i$) shown inside the dot
+                arrow_label = Tex(
+                    c.name,
+                    font_size=12,
+                    color=BLACK,
+                ).move_to(arrow_dot.get_center())
+                # Above the dot
+                arrow_label.set_z_index(21)
+
             connection_displays[c.id] = arrow
             arrow.set_z_index(-1)
-            arrow_label = Tex(c.name, font_size=20, color=BLACK).move_to(arrow.points[len(arrow.points)//2] + UP * 0.175)
+            c.pos = arrow_dot.get_center()
 
             # Display rate as label + numeric value for easy in-place updating
             if hasattr(c, "rate"):
-                label_tex = Tex("$T_{E_" + str(c.id) + "} =$", font_size=16, color=BLACK)
-                value_num = Integer(c.rate, font_size=16, color=BLACK)
+                if c.type == ElementType.LABEL_MODIFIER:
+                    label_str = "$\\dot{T}_{E_" + str(c.id) + "} =$"
+                    frac = Fraction(c.rate).limit_denominator(100)
+                    value_num = Tex("$\\frac{" + str(frac.numerator) + "}{" + str(frac.denominator) + "}$", font_size=12, color=BLACK)
+                else:
+                    label_str = "$T_{E_" + str(c.id) + "} =$"
+                    value_num = Integer(c.rate, font_size=12, color=BLACK)
+                    if c.type == ElementType.RESOURCE_CONNECTION:
+                        rate_displays[c.id] = value_num  # store the numeric part for updates
+
+                label_tex = Tex(label_str, font_size=12, color=BLACK)
                 value_num.next_to(label_tex, RIGHT, buff=0.05)
 
-                group_pos = arrow.points[len(arrow.points)//2] + DOWN * 0.175
+                # Ensure these labels sit above nodes as well
+                label_tex.set_z_index(40)
+                value_num.set_z_index(40)
+
+                group_pos = arrow_dot.get_center() + DOWN * 0.195
                 VGroup(label_tex, value_num).move_to(group_pos)
 
-                rate_displays[c.id] = value_num  # store the numeric part for updates
                 self.add(label_tex, value_num)
 
             # Predicate label (static)
@@ -158,9 +201,10 @@ class MachinationsScene(Scene):
                 # Remove existing $ delimiters from predicate repr to avoid nested math environments
                 pred_body = str(c.predicate).strip("$")
                 pred_text = "$P_{E_" + str(c.id) + "}\;=\;(" + pred_body + ")$"
-                pred_tex = Tex(pred_text, font_size=16, color=BLACK)
+                pred_tex = Tex(pred_text, font_size=12, color=BLACK)
+                pred_tex.set_z_index(40)
                 offset_factor = 2 if hasattr(c, "rate") else 1
-                pred_tex.move_to(arrow.points[len(arrow.points)//2] + DOWN * 0.175 * offset_factor)
+                pred_tex.move_to(arrow_dot.get_center() + DOWN * 0.195 * offset_factor)
                 self.add(pred_tex)
             self.add(arrow, arrow_dot, arrow_label)
 
@@ -170,12 +214,6 @@ class MachinationsScene(Scene):
 
             animations = [time_display.animate.set_value(t)]
             self.play(*animations, run_time=0.5)
-
-            animations = []
-            for i, row in enumerate(node_displays):
-                if m.V_satisfied[i]:
-                    animations.append(row.animate.set_fill(GREEN))
-            self.play(*animations, run_time=0.5, rate_func=there_and_back)
 
             # Show random gates generating
             for i,row in enumerate(value_displays):
@@ -211,9 +249,9 @@ class MachinationsScene(Scene):
                 for j, col in enumerate(row):
                     if col:
                         animations.append(col.animate.set_value(X[i,j]))
-            for i, row in enumerate(T_e):
-                conn_id = m.resource_connections[i].id
-                if row:
-                    animations.append(rate_displays[conn_id].animate.set_value(row))
+            # Update all rate displays
+            for idx, rate_val in enumerate(T_e):
+                conn_id = m.resource_connections[idx].id
+                animations.append(rate_displays[conn_id].animate.set_value(rate_val))
             self.play(*animations, run_time=0.5)
 

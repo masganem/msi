@@ -18,6 +18,8 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
     # Placeholder
     V_pending = np.zeros(V.shape[0], dtype=np.bool_)
 
+    E_R_active[:]    = np.zeros(E_R.shape[0], dtype=np.bool_)
+
     # Evaluate activators
     V_blocked = np.zeros(V.shape[0], dtype=np.bool_)
     for i in range(E_A.shape[0]):
@@ -30,19 +32,29 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
             V_blocked[dest] = True
 
     # Evaluate triggers
-    V_targeted = np.zeros(V.shape[0], dtype=np.bool_)
+    V_targeted   = np.zeros(V.shape[0], dtype=np.bool_)
     E_G_active[:] = np.zeros(E_G.shape[0], dtype=np.bool_)
+    # Edges (indices in E_R) that are triggered this tick
+    R_triggered  = np.zeros(E_R.shape[0], dtype=np.bool_)
 
     # Pass 1: triggers originating from pools
     for i in range(E_G.shape[0]):
         src  = int(E_G[i, 1])
         dest = int(E_G[i, 2])
+        dest_type = int(E_G[i, 5])
 
         # Pools have V[src, 2] == 0 (see ElementType.POOL)
         if V[src, 2] == 0:
             if V_satisfied[src]:
                 E_G_active[i] = True
-                V_targeted[dest] = True
+                if dest_type == 0 or dest_type == 1:
+                    V_targeted[dest] = True
+                elif dest_type == 2:
+                    # Map connection id -> row index in E_R
+                    for ridx in range(E_R.shape[0]):
+                        if int(E_R[ridx, 0]) == dest:
+                            R_triggered[ridx] = True
+                            break
 
     for i in range(V.shape[0]):
         # Gate
@@ -67,7 +79,14 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
                 # Fire trigger if predicate holds (or no predicate defined)
                 if pred_idx == -1 or apply_pred(X[i, res_idx], pred_ops[pred_idx], pred_cs[pred_idx]):
                     E_G_active[j] = True
-                    V_targeted[dst_id] = True
+                    dst_type = int(E_G[j, 5])
+                    if dst_type == 0 or dst_type == 1:
+                        V_targeted[dst_id] = True
+                    elif dst_type == 2:
+                        for ridx in range(E_R.shape[0]):
+                            if int(E_R[ridx, 0]) == dst_id:
+                                R_triggered[ridx] = True
+                                break
 
             # Resource connections leaving from gate
 
@@ -85,7 +104,6 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
     #      newly received resources can immediately enable subsequent flows.
     # ------------------------------------------------------------
 
-    E_R_active[:]    = np.zeros(E_R.shape[0], dtype=np.bool_)
     E_R_satisfied    = np.zeros(E_R.shape[0], dtype=np.bool_)
 
     # Phase 1 – no-predicate edges (dest must be active)
@@ -95,8 +113,10 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
             continue  # handled in phase-2
 
         dest_id  = int(E_R[i, 2])
-        if not V_active[dest_id]:
-            continue  # destination not firing – cannot transfer this edge
+        if (not V_active[dest_id]) and (not R_triggered[i]):
+            continue  # cannot transfer this edge this phase
+        if E_R_active[i]:
+            continue # will deal with this later
 
         src_id  = int(E_R[i, 1])
         res_idx = int(E_R[i, 3])
@@ -145,7 +165,29 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
         if not has_incoming[i]:
             V_satisfied[i] = False
 
+    # -----------------------------
     # Update resource edge rates
+    #   • Start from each edge's base rate (stored in E_R[:,5]).
+    #   • Add contributions from label-modifier connections.
+    # -----------------------------
+
+    # Reset all rates to their base values (column 5 of E_R).
+    for ridx in range(E_R.shape[0]):
+        T_e[ridx] = E_R[ridx, 5]
+
+    # Apply label modifiers
+    for i in range(E_T.shape[0]):
+        # Row fields: (id, src.id, dst_conn.id, resource_id, rate)
+        src_id       = int(E_T[i, 1])
+        dst_conn_id  = int(E_T[i, 2])  # connection ID of the target resource edge
+        res_id       = int(E_T[i, 3])
+        mod_rate_coef = E_T[i, 4]
+
+        # Locate the corresponding resource-edge row index.
+        for ridx in range(E_R.shape[0]):
+            if int(E_R[ridx, 0]) == dst_conn_id:
+                T_e[ridx] += mod_rate_coef * X[src_id, res_id]
+                break
 
     # Update node states per node modifiers
 

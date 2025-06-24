@@ -98,6 +98,7 @@ class Machinations:
 
 
         # Resource connections
+        # Columns: id, src, dst, resource_type, predicate_id, base_rate
         E_R = np.array([
             [
                 c.id,
@@ -105,7 +106,7 @@ class Machinations:
                 c.dst.id,
                 c.resource_type.id,
                 c.predicate.id if c.predicate else -1,
-                c.weight,
+                c.rate,  # store the initial/base rate here
             ]
             for c in resource_connections
         ], dtype=np.float64).reshape(-1, 6)
@@ -142,9 +143,10 @@ class Machinations:
                 c.dst.id,
                 c.predicate.id if c.predicate else -1,
                 c.weight,
+                c.dst_type.value,
             ]
             for c in triggers
-        ], dtype=np.float64).reshape(-1, 5)
+        ], dtype=np.float64).reshape(-1, 6)
 
         # Activators
         E_A = np.array([
