@@ -14,7 +14,7 @@ def apply_pred(x: float, op_code: int, c: float) -> bool:
 
 # TODO: jesus christ, this function signature... too ugly... 
 @njit
-def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_ops, pred_cs, V_active, E_R_active, E_G_active):
+def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, X_mods, T_e, V_pending, V_satisfied, pred_ops, pred_cs, V_active, E_R_active, E_G_active):
     # Placeholder
     V_pending = np.zeros(V.shape[0], dtype=np.bool_)
 
@@ -150,6 +150,19 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
             E_R_satisfied[i] = True
         # else: not enough resource – E_R_satisfied remains False
 
+    X -= X_mods
+    X_mods[:] = np.zeros(X.shape, dtype=np.float64)
+    # Update node states per node modifiers
+    for i in range(E_N.shape[0]):
+        # Row fields: (id, src.id, dst_conn.id, resource_id, rate)
+        src_id       = int(E_N[i, 1])
+        dst_id  = int(E_N[i, 2])  
+        src_res_id       = int(E_N[i, 3])
+        dst_res_id       = int(E_N[i, 4])
+        mod_rate_coef = E_N[i, 5]
+        X_mods[dst_id, dst_res_id] = X[src_id, src_res_id] * mod_rate_coef
+    X += X_mods
+
     V_satisfied[:] = np.ones(V.shape[0], dtype=np.bool_)
 
     # Track which nodes have at least one incoming resource connection
@@ -189,6 +202,5 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, T_e, V_pending, V_satisfied, pred_op
                 T_e[ridx] += mod_rate_coef * X[src_id, res_id]
                 break
 
-    # Update node states per node modifiers
 
     return

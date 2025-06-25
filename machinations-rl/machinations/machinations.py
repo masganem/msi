@@ -16,6 +16,7 @@ class Machinations:
         V,
         E,
         X,
+        X_mods,
         T_e,
         V_pending,
         V_satisfied,
@@ -37,6 +38,7 @@ class Machinations:
         self.V = V
         self.E_R, self.E_T, self.E_N, self.E_G, self.E_A = E
         self.X = X
+        self.X_mods = X_mods
         self.T_e = T_e
         self.pred_ops = pred_ops
         self.pred_cs = pred_cs
@@ -129,11 +131,12 @@ class Machinations:
                 c.id,
                 c.src.id,
                 c.dst.id,
-                c.resource_type.id,
+                c.src_resource_type.id,
+                c.dst_resource_type.id,
                 c.rate,
             ]
             for c in node_modifiers
-        ], dtype=np.float64).reshape(-1, 5)
+        ], dtype=np.float64).reshape(-1, 6)
 
         # Triggers
         E_G = np.array([
@@ -165,6 +168,7 @@ class Machinations:
         for node in nodes:
             for resource, amount in node.initial_resources:
                 X[node.id, resource.id] = float(amount)
+        X_mods = np.zeros((len(nodes), len(resources)), dtype=np.float64)
 
         # Resource connection rates are part of the state
         T_e = np.zeros((len(resource_connections),), dtype=np.float64)
@@ -183,6 +187,7 @@ class Machinations:
             V,
             (E_R, E_T, E_N, E_G, E_A),
             X,
+            X_mods,
             T_e,
             np.zeros(V.shape[0], dtype=np.bool_),
             np.zeros(V.shape[0], dtype=np.bool_),
@@ -196,7 +201,7 @@ class Machinations:
     def step(self):
         step_jit(
             self.V, self.E_R, self.E_T, self.E_N, self.E_G,
-            self.E_A, self.X, self.T_e, self.V_pending,
+            self.E_A, self.X, self.X_mods, self.T_e, self.V_pending,
             self.V_satisfied, self.pred_ops, self.pred_cs, self.V_active,
             self.E_R_active, self.E_G_active
         )

@@ -95,11 +95,12 @@ class LabelModifier(Connection):
         self.resource_type = resource_type
 
 class NodeModifier(Connection):
-    def __init__(self, src: Node, dst: Node, resource_type: Resource, rate=1.0):
+    def __init__(self, src: Node, dst: Node, src_resource_type: Resource, dst_resource_type: Resource, rate=1.0):
         super().__init__(src, dst)
         self.type = ElementType.NODE_MODIFIER
         self.rate = rate
-        self.resource_type = resource_type
+        self.src_resource_type = src_resource_type
+        self.dst_resource_type = dst_resource_type
 
 class Trigger(Connection):
     def __init__(self, src: Node, dst: Node | Connection, predicate = None, weight = 1.0):

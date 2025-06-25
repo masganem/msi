@@ -15,7 +15,7 @@ r = Renderer(m)
 r.render(steps=8)  # adjust steps if desired
 
 n_nodes = len(m.nodes)
-radius = 2.0
+radius = 3.0
 
 for i, node in enumerate(m.nodes):
     angle = 2 * math.pi * i / n_nodes
@@ -28,10 +28,10 @@ for i, c in enumerate(m.connections):
     c.name = "$E_{" + str(c.id) + "}$"
 
 for i, resource in enumerate(m.resources):
-    if resource.name == "HP":
-        resource.color = "#ff0000"
-    elif resource.name == "Mana":
-        resource.color = "#0000ff"
+    if resource.name == "Money":
+        resource.color = "#3ef948"
+    elif resource.name == "Property":
+        resource.color = "#feae34"
     else:
         resource.color = "#0f0f0f"
 

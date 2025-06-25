@@ -27,14 +27,23 @@ e3 = ResourceConnection(
         n4, n1, r1, 100.0
     )
 e4 = Trigger(n2, e3, Predicate("<=", 3))
-n5 = Pool(FiringMode.PASSIVE, [(r2, 0)])
 e5 = LabelModifier(n1, e1, r1, .1)
 
+n5 = Pool(FiringMode.PASSIVE, [(r2, 0)])
+e6 = NodeModifier(n1, n5, r1, r2, .1)
+
+n6 = Pool(FiringMode.INTERACTIVE, [])
+e7 = ResourceConnection(n1, n6, r1, 120.0)
+n7 = Pool(FiringMode.PASSIVE, [(r2, inf)])
+e8 = Trigger(n6, n7)
+e9 = ResourceConnection(n7, n1, r2, 1.0)
+
 m = Machinations.load((
-    [n1, n2, n3, n4, n5],
-    [e1, e2, e3, e4, e5],
+    [n1, n2, n3, n4, n5, n6, n7],
+    [e1, e2, e3, e4, e5, e6, e7, e8, e9],
     [r1, r2, luck],
 ))
+
 
 r = Renderer(m)
 

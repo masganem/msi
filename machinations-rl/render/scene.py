@@ -27,7 +27,7 @@ else:
         "render/renderer.pkl or inject `scene.renderer` programmatically."
     )
 
-def chord_endpoints(src_center, dst_center):
+def chord_endpoints(src_center, dst_center, dst_is_connection: bool = False):
     src = np.asarray(src_center, dtype=float)
     dst = np.asarray(dst_center, dtype=float)
     vec = dst - src
@@ -35,8 +35,12 @@ def chord_endpoints(src_center, dst_center):
     if dist == 0:
         return src.copy(), dst.copy()
     u = vec / dist
-    start_pt = u * 0.33
-    end_pt   = u * -0.33
+    # Base offsets (how far we move away from the centres along the src→dst vector)
+    start_mag = 0.3               # keep constant for the source node
+    end_mag   = 0.2 if dst_is_connection else 0.3  # shorter if arrow points to a connection centre
+
+    start_pt = u * -start_mag
+    end_pt   = u * end_mag
     R = random_rotation_matrix()
     return src + start_pt @ R , dst + end_pt
 
@@ -67,10 +71,13 @@ class MachinationsScene(Scene):
             color = getattr(node, "color", "BLACK")
 
             if node.type == ElementType.GATE:
-                dot = Square(side_length=0.7, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0]).rotate(3.14/4)
+                dot = Square(side_length=0.7, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0]).rotate(3.14/4)
             else:
-                dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0])
-            # dot.set_fill("#f8f8f8")
+                dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0])
+                if node.firing_mode == FiringMode.INTERACTIVE:
+                    dot_2 = Circle(radius=0.38, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0])
+                    self.add(dot_2)
+            dot.set_fill("#f8f8f8")
             dot.set_z_index(1)
             node_displays[i] = dot
 
@@ -83,9 +90,17 @@ class MachinationsScene(Scene):
                 self.add(mode_label)
 
             k = 0
+            # Determine which resource ids were explicitly set in the node definition.
+            init_res_ids = {res.id for res, _ in getattr(node, "initial_resources", [])}
             for j, amount in enumerate(resources):
-                if node.type == ElementType.GATE and not m.resources[j].id == node.resource_type.id:
-                    continue
+                # Skip resources that were not mentioned in the constructor call for this node.
+                if node.type == ElementType.GATE:
+                    # For gates we still want to show only their configured resource_type
+                    if m.resources[j].id != node.resource_type.id:
+                        continue
+                else:
+                    if m.resources[j].id not in init_res_ids:
+                        continue
                 sq = (
                     Square(side_length=0.25, fill_opacity=0.9)
                         .set_stroke(m.resources[j].color, width=2)
@@ -110,23 +125,17 @@ class MachinationsScene(Scene):
         for c in m.connections:
             c1 = np.array(getattr(c.src,  "pos", (0,0)), float)[:2]
             c2 = np.array(getattr(c.dst,  "pos", (0,0)), float)[:2]
-            p1, p2 = chord_endpoints(c1, c2)
+            dst_is_conn = isinstance(c.dst, Connection)
+            p1, p2 = chord_endpoints(c1, c2, dst_is_connection=dst_is_conn)
             arrow_color = c.resource_type.color if hasattr(c, "resource_type") and c.resource_type else BLACK
-            if c.type == ElementType.TRIGGER:
+            if c.type in [ElementType.TRIGGER, ElementType.LABEL_MODIFIER, ElementType.NODE_MODIFIER]:
                 arrow = Arrow(
                     start=[*p1, 0],
-                    end=[*c2, 0],
+                    end=[*p2, 0],
                     stroke_width=0,
                     color=arrow_color,
                 )
-                dl = DashedLine(
-                    start=[*p1, 0],
-                    end=[*c2, 0],
-                    stroke_width=1,
-                    color=arrow_color,
-                )
-                self.add(dl, Tex("*", font_size=20, color=BLACK).move_to(arrow.points[-2]))
-                arrow.tip.scale(0.5)
+                arrow.tip.scale(0.3)
 
                 # Add dot + label in the middle for triggers as well
                 arrow_dot = (
@@ -135,6 +144,8 @@ class MachinationsScene(Scene):
                     .move_to(arrow.points[len(arrow.points)//2])
                 )
                 arrow_dot.set_z_index(20)
+                if c.type == ElementType.TRIGGER:
+                    self.add(Tex("*", font_size=20, color=BLACK).move_to(arrow_dot.get_center() + [.125, .125, .0]))
 
                 arrow_label = Tex(
                     c.name,
@@ -145,11 +156,11 @@ class MachinationsScene(Scene):
             else:
                 arrow = CurvedArrow(
                     start_point=[*p1, 0],
-                    end_point=[*c2, 0],
+                    end_point=[*p2, 0],
                     stroke_width=2,
                     color=arrow_color,
                 )
-                arrow.tip.move_to(arrow.points[-2]).scale(0.5)
+                arrow.tip.move_to(arrow.points[-2]).scale(0.3)
 
                 # Middle dot that will carry the edge label
                 arrow_dot = (
@@ -174,7 +185,7 @@ class MachinationsScene(Scene):
 
             # Display rate as label + numeric value for easy in-place updating
             if hasattr(c, "rate"):
-                if c.type == ElementType.LABEL_MODIFIER:
+                if c.type == ElementType.LABEL_MODIFIER or c.type == ElementType.NODE_MODIFIER:
                     label_str = "$\\dot{T}_{E_" + str(c.id) + "} =$"
                     frac = Fraction(c.rate).limit_denominator(100)
                     value_num = Tex("$\\frac{" + str(frac.numerator) + "}{" + str(frac.denominator) + "}$", font_size=12, color=BLACK)
@@ -206,6 +217,15 @@ class MachinationsScene(Scene):
                 offset_factor = 2 if hasattr(c, "rate") else 1
                 pred_tex.move_to(arrow_dot.get_center() + DOWN * 0.195 * offset_factor)
                 self.add(pred_tex)
+            arrow.points[-1] = arrow.tip.get_center()
+            if c.type in [ElementType.TRIGGER, ElementType.LABEL_MODIFIER, ElementType.NODE_MODIFIER]:
+                dl = DashedLine(
+                    start=[*p1, 0],
+                    end=arrow.tip.get_center(),
+                    stroke_width=1,
+                    color=arrow_color,
+                )
+                self.add(dl)
             self.add(arrow, arrow_dot, arrow_label)
 
         for step in renderer.history:
