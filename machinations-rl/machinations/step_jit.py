@@ -15,8 +15,8 @@ def apply_pred(x: float, op_code: int, c: float) -> bool:
 # TODO: jesus christ, this function signature... too ugly... 
 @njit
 def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, X_mods, T_e, V_pending, V_satisfied, pred_ops, pred_cs, V_active, E_R_active, E_G_active):
-    # Placeholder
-    V_pending = np.zeros(V.shape[0], dtype=np.bool_)
+    # Copy pending firing requests; they are set externally (e.g., by an RL agent)
+    pending_flags = V_pending.copy()
 
     E_R_active[:]    = np.zeros(E_R.shape[0], dtype=np.bool_)
 
@@ -91,11 +91,11 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, X_mods, T_e, V_pending, V_satisfied,
             # Resource connections leaving from gate
 
         # Compute active nodes for the current iteration (will be recomputed for all later)
-        V_active[i] = (V[i, 1] == 1 or V_pending[i] or V_targeted[i]) and not V_blocked[i]
+        V_active[i] = (V[i, 1] == 1 or pending_flags[i] or V_targeted[i]) and not V_blocked[i]
 
     # Re-evaluate active state for every node now that all triggers have been processed.
     for i in range(V.shape[0]):
-        V_active[i] = (V[i, 1] == 1 or V_pending[i] or V_targeted[i]) and not V_blocked[i]
+        V_active[i] = (V[i, 1] == 1 or pending_flags[i] or V_targeted[i]) and not V_blocked[i]
 
     # ------------------------------------------------------------
     # Resource connections – two-phase evaluation
@@ -202,5 +202,7 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, X_mods, T_e, V_pending, V_satisfied,
                 T_e[ridx] += mod_rate_coef * X[src_id, res_id]
                 break
 
+    # Clear pending flags for next iteration
+    V_pending[:] = np.zeros(V.shape[0], dtype=np.bool_)
 
     return

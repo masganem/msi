@@ -13,18 +13,29 @@ class Renderer:
         self.history: list[dict] = []
         self._record_snapshot()
 
-    def _record_snapshot(self) -> None:
+    def _record_snapshot(self, extra: dict | None = None) -> None:
+        """Record a snapshot of the current simulation state.
+
+        Parameters
+        ----------
+        extra : dict, optional
+            Additional key/value pairs to store in the snapshot (e.g. actions
+            taken by an agent or *V_pending* flags). The supplied dictionary is
+            shallow-copied before insertion so that later mutations do not
+            affect the stored history.
         """
-        Internal: record a snapshot of the current simulation state.
-        """
-        self.history.append({
+        snap = {
             't': self.model.t,
             'X': self.model.X.copy(),
             'T_e': self.model.T_e.copy(),
             'V_active': self.model.V_active.copy(),
+            'V_pending': self.model.V_pending.copy(),
             'E_R_active': self.model.E_R_active.copy(),
             'E_G_active': self.model.E_G_active.copy(),
-        })
+        }
+        if extra:
+            snap.update(extra.copy())
+        self.history.append(snap)
 
     def simulate(self, steps: int) -> None:
         """

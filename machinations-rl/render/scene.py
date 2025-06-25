@@ -81,7 +81,8 @@ class MachinationsScene(Scene):
             dot.set_z_index(1)
             node_displays[i] = dot
 
-            label = Tex(node.name, font_size=20, color=BLACK).next_to(dot, direction=ORIGIN)
+            label_text = getattr(node, "name", f"$V_{{{node.id}}}$")
+            label = Tex(label_text, font_size=20, color=BLACK).next_to(dot, direction=ORIGIN)
             label.set_z_index(2)
             self.add(dot, label)
 
@@ -101,15 +102,16 @@ class MachinationsScene(Scene):
                 else:
                     if m.resources[j].id not in init_res_ids:
                         continue
+                res_color = getattr(m.resources[j], "color", BLACK)
                 sq = (
                     Square(side_length=0.25, fill_opacity=0.9)
-                        .set_stroke(m.resources[j].color, width=2)
-                        .set_fill(m.resources[j].color)
+                        .set_stroke(res_color, width=2)
+                        .set_fill(res_color)
                         .next_to(dot, DOWN, buff=0.05)
                         .shift(RIGHT * k * 0.3)
                     )
                 sq_label = (
-                        Text(m.resources[j].name, font_size=20, color=m.resources[j].color)
+                        Text(m.resources[j].name, font_size=20, color=res_color)
                         .next_to(sq, direction=DOWN, buff=-0.04)
                         .scale(0.3)
                     )
@@ -127,7 +129,11 @@ class MachinationsScene(Scene):
             c2 = np.array(getattr(c.dst,  "pos", (0,0)), float)[:2]
             dst_is_conn = isinstance(c.dst, Connection)
             p1, p2 = chord_endpoints(c1, c2, dst_is_connection=dst_is_conn)
-            arrow_color = c.resource_type.color if hasattr(c, "resource_type") and c.resource_type else BLACK
+            arrow_color = (
+                getattr(c.resource_type, "color", BLACK)
+                if hasattr(c, "resource_type") and c.resource_type is not None
+                else BLACK
+            )
             if c.type in [ElementType.TRIGGER, ElementType.LABEL_MODIFIER, ElementType.NODE_MODIFIER]:
                 arrow = Arrow(
                     start=[*p1, 0],
@@ -147,8 +153,9 @@ class MachinationsScene(Scene):
                 if c.type == ElementType.TRIGGER:
                     self.add(Tex("*", font_size=20, color=BLACK).move_to(arrow_dot.get_center() + [.125, .125, .0]))
 
+                conn_label_text = getattr(c, "name", f"$E_{{{c.id}}}$")
                 arrow_label = Tex(
-                    c.name,
+                    conn_label_text,
                     font_size=12,
                     color=BLACK,
                 ).move_to(arrow_dot.get_center())
@@ -171,8 +178,9 @@ class MachinationsScene(Scene):
                 arrow_dot.set_z_index(20)
 
                 # Label (e.g. $E_i$) shown inside the dot
+                conn_label_text = getattr(c, "name", f"$E_{{{c.id}}}$")
                 arrow_label = Tex(
-                    c.name,
+                    conn_label_text,
                     font_size=12,
                     color=BLACK,
                 ).move_to(arrow_dot.get_center())
@@ -229,7 +237,13 @@ class MachinationsScene(Scene):
             self.add(arrow, arrow_dot, arrow_label)
 
         for step in renderer.history:
-            t, X, T_e, V_active, E_R_active, E_G_active = step.values()
+            # Access by key to remain robust even if extra fields are present
+            t            = step['t']
+            X            = step['X']
+            T_e          = step['T_e']
+            V_active     = step['V_active']
+            E_R_active   = step['E_R_active']
+            E_G_active   = step['E_G_active']
             print(f"{m.V_active=}")
 
             animations = [time_display.animate.set_value(t)]
