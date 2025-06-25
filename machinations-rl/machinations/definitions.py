@@ -61,11 +61,45 @@ class Pool(Node):
         self.type = ElementType.POOL
         
 class Gate(Node):
-    def __init__(self, firing_mode: FiringMode, distribution_mode: DistributionMode, quotient: int, resource_type: str):
+    def __init__(self, firing_mode: FiringMode, distribution_mode: DistributionMode, values_or_quotient, resource_type: str):
+        """Create a Gate node.
+
+        Parameters
+        ----------
+        firing_mode : FiringMode
+            PASSIVE / AUTOMATIC / INTERACTIVE.
+        distribution_mode : DistributionMode
+            DETERMINISTIC or NONDETERMINISTIC.  For *NONDETERMINISTIC* gates, the
+            *values_or_quotient* argument can be either an *int* (old behaviour –
+            upper-bound of a uniform integer distribution starting at 0) **or** a
+            *list/tuple/np.ndarray* of numerical values from which one will be
+            sampled uniformly.  For deterministic gates the argument is stored in
+            *quotient* unchanged.
+        values_or_quotient : int | Sequence[float]
+            Behaviour depends on *distribution_mode* (see above).
+        resource_type : Resource
+            Single resource the gate operates on.
+        """
+
         super().__init__(firing_mode)
         self.type = ElementType.GATE
         self.distribution_mode = distribution_mode
-        self.quotient = quotient
+
+        if distribution_mode == DistributionMode.NONDETERMINISTIC:
+            # Accept both legacy *int* and new *sequence* inputs.
+            if isinstance(values_or_quotient, (list, tuple, np.ndarray)):
+                self.values: list[float] = list(values_or_quotient)
+                # For compatibility fill *quotient* with the number of choices – 1.
+                self.quotient = len(self.values) - 1
+            else:
+                # Legacy: treat integer as inclusive upper-bound 0..N
+                self.values = list(range(int(values_or_quotient) + 1))
+                self.quotient = int(values_or_quotient)
+        else:
+            # Deterministic gate – keep old behaviour.
+            self.quotient = values_or_quotient
+            self.values = []  # unused
+
         self.resource_type = resource_type
 
 class Connection:

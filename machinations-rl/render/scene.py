@@ -27,22 +27,70 @@ else:
         "render/renderer.pkl or inject `scene.renderer` programmatically."
     )
 
+# Per-pair edge index bookkeeping (used to stagger overlapping arrows)
+_edge_counter: dict[tuple[int, int], int] = {}
+
+# CurvedArrow radius tweaking (avoids overlap)
+_RADIUS_DELTA = 0.25  # incremental change per overlapping edge
+
+
+def _next_edge_radius(src_id: int, dst_id: int, base_radius: float) -> float | None:
+    """Return a signed *radius* to feed into CurvedArrow for the next edge
+    connecting *src_id → dst_id* so that multiple edges are drawn with
+    alternating curvature.
+
+    The first edge keeps Manim's default (return *None*).  Subsequent edges
+    alternate sign and gradually increase absolute value.
+    """
+
+    key = (src_id, dst_id)
+    idx = _edge_counter.get(key, 0)
+    _edge_counter[key] = idx + 1
+
+    if idx == 0:
+        return None  # default curvature
+
+    # idx = 1 => -1 * (base+0Δ)
+    # idx = 2 => +1 * (base+1Δ)
+    # idx = 3 => -1 * (base+1Δ)
+    # idx = 4 => +1 * (base+2Δ), etc.
+    sign = -1 if idx % 2 == 1 else 1
+    k = (idx + 1) // 2 - 1  # 0,0,1,1,2,2,…
+    return sign * (base_radius + k * _RADIUS_DELTA)
+
+
 def chord_endpoints(src_center, dst_center, dst_is_connection: bool = False):
+    """Compute visually pleasing arrow endpoints that avoid entering the nodes.
+
+    The function trims a *radius* from each node centre along the connecting
+    line, then adds a small perpendicular offset so parallel edges are more
+    distinguishable.  This keeps both the shaft and the tip clear of the
+    circular/square glyphs used for nodes while preserving consistent spacing
+    irrespective of zoom level.
+    """
+
     src = np.asarray(src_center, dtype=float)
     dst = np.asarray(dst_center, dtype=float)
-    vec = dst - src
-    dist = np.linalg.norm(vec)
-    if dist == 0:
-        return src.copy(), dst.copy()
-    u = vec / dist
-    # Base offsets (how far we move away from the centres along the src→dst vector)
-    start_mag = 0.3               # keep constant for the source node
-    end_mag   = 0.2 if dst_is_connection else 0.3  # shorter if arrow points to a connection centre
 
-    start_pt = u * -start_mag
-    end_pt   = u * end_mag
-    R = random_rotation_matrix()
-    return src + start_pt @ R , dst + end_pt
+    # Vector from src → dst
+    vec = dst - src
+    length = np.linalg.norm(vec)
+    if length == 0:
+        return src.copy(), dst.copy()
+
+    u = vec / length                           # unit direction
+
+    # Keep arrowheads safely outside node shapes.
+    R_SRC = 0.25                               # modest clearance at source
+    # Shorter clearance for node destinations so arrow ends closer.
+    R_DST = 0.25 if not dst_is_connection else 0.08
+
+    perp = vec / length
+
+    start_pt = src + u * R_SRC
+    end_pt   = dst - u * R_DST
+
+    return start_pt, end_pt
 
 def random_rotation_matrix():
     theta = np.random.uniform(0, 0.4*np.pi)
@@ -128,6 +176,11 @@ class MachinationsScene(Scene):
             c1 = np.array(getattr(c.src,  "pos", (0,0)), float)[:2]
             c2 = np.array(getattr(c.dst,  "pos", (0,0)), float)[:2]
             dst_is_conn = isinstance(c.dst, Connection)
+
+            # Compute non-overlapping curvature radius for CurvedArrow
+            base_rad = np.linalg.norm(c2 - c1) * 0.6  # heuristic: 60 % of chord len
+            custom_radius = _next_edge_radius(c.src.id, c.dst.id, base_rad)
+
             p1, p2 = chord_endpoints(c1, c2, dst_is_connection=dst_is_conn)
             arrow_color = (
                 getattr(c.resource_type, "color", BLACK)
@@ -140,6 +193,7 @@ class MachinationsScene(Scene):
                     end=[*p2, 0],
                     stroke_width=0,
                     color=arrow_color,
+                    buff=0.0,  # eliminate automatic gap between tip and end point
                 )
                 arrow.tip.scale(0.3)
 
@@ -161,13 +215,29 @@ class MachinationsScene(Scene):
                 ).move_to(arrow_dot.get_center())
                 arrow_label.set_z_index(21)
             else:
+                ca_kwargs = {
+                    "stroke_width": 2,
+                    "color": arrow_color,
+                }
+                if custom_radius is not None:
+                    ca_kwargs["radius"] = custom_radius
+
                 arrow = CurvedArrow(
                     start_point=[*p1, 0],
                     end_point=[*p2, 0],
-                    stroke_width=2,
-                    color=arrow_color,
+                    **ca_kwargs,
                 )
-                arrow.tip.move_to(arrow.points[-2]).scale(0.3)
+                # Leave the tip at the pre-computed end position and orient it so
+                # that it points directly towards the destination node centre
+                # (instead of along the tangential direction of the curve).
+                arrow.tip.scale(0.3)
+                cur_vec = arrow.points[-1][:2] - arrow.points[-2][:2]
+                desired_vec = c2 - p2  # centre of dst minus arrow end
+                # Guard against zero-length vectors (can happen in degenerate layouts).
+                if np.linalg.norm(cur_vec) > 1e-6 and np.linalg.norm(desired_vec) > 1e-6:
+                    cur_ang = np.arctan2(cur_vec[1], cur_vec[0])
+                    des_ang = np.arctan2(desired_vec[1], desired_vec[0])
+                    arrow.tip.rotate(des_ang - cur_ang)
 
                 # Middle dot that will carry the edge label
                 arrow_dot = (
@@ -219,7 +289,7 @@ class MachinationsScene(Scene):
             if hasattr(c, "predicate") and c.predicate is not None:
                 # Remove existing $ delimiters from predicate repr to avoid nested math environments
                 pred_body = str(c.predicate).strip("$")
-                pred_text = "$P_{E_" + str(c.id) + "}\;=\;(" + pred_body + ")$"
+                pred_text = "$P_{E_{" + str(c.id) + "}}\;=\;(" + pred_body + ")$"
                 pred_tex = Tex(pred_text, font_size=12, color=BLACK)
                 pred_tex.set_z_index(40)
                 offset_factor = 2 if hasattr(c, "rate") else 1
@@ -281,8 +351,17 @@ class MachinationsScene(Scene):
             animations = []
             for i, row in enumerate(value_displays):
                 for j, col in enumerate(row):
-                    if col:
-                        animations.append(col.animate.set_value(X[i,j]))
+                    if col is None:
+                        continue
+                    # Skip non-deterministic gates because they were already
+                    # updated in the earlier "random gates generating" phase;
+                    # updating them again causes visual duplication.
+                    if (
+                        m.nodes[i].type == ElementType.GATE and
+                        m.nodes[i].distribution_mode == DistributionMode.NONDETERMINISTIC
+                    ):
+                        continue
+                    animations.append(col.animate.set_value(X[i, j]))
             # Update all rate displays
             for idx, rate_val in enumerate(T_e):
                 conn_id = m.resource_connections[idx].id

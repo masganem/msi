@@ -1,5 +1,4 @@
 from numba import njit
-from random import randint
 import numpy as np
 
 @njit
@@ -59,11 +58,10 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, X_mods, T_e, V_pending, V_satisfied,
     for i in range(V.shape[0]):
         # Gate
         if V[i, 2] == 1:
-            # Nondeterministic
-            if V[i, 3] == 1:
-                # Remember gates can only have one resource type
-                res_idx = int(V[i, 6])
-                X[i, res_idx] = randint(0, int(V[i, 5]))
+            # NOTE: For nondeterministic gates the resource value (X[i, res_idx])
+            #       is now sampled *outside* this JIT function, prior to calling
+            #       `step_jit`.  The old in-place `randint` logic has been removed
+            #       to allow arbitrary choice distributions.
             
             # Triggers leaving from this gate
             for j in range(E_G.shape[0]):
@@ -96,6 +94,29 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, X_mods, T_e, V_pending, V_satisfied,
     # Re-evaluate active state for every node now that all triggers have been processed.
     for i in range(V.shape[0]):
         V_active[i] = (V[i, 1] == 1 or pending_flags[i] or V_targeted[i]) and not V_blocked[i]
+
+    # -----------------------------
+    # Update resource edge rates (EARLY)
+    #   • Start from each edge's base rate (stored in E_R[:,5]).
+    #   • Add contributions from label-modifier connections.
+    #   This must execute BEFORE the resource-transfer phases so that the
+    #   updated rates are used immediately in the current tick.
+    # -----------------------------
+    for ridx in range(E_R.shape[0]):
+        T_e[ridx] = E_R[ridx, 5]
+
+    for i in range(E_T.shape[0]):
+        # Row fields: (id, src.id, dst_conn.id, resource_id, rate)
+        src_id       = int(E_T[i, 1])
+        dst_conn_id  = int(E_T[i, 2])  # connection ID of the target resource edge
+        res_id       = int(E_T[i, 3])
+        mod_rate_coef = E_T[i, 4]
+
+        # Locate the corresponding resource-edge row index.
+        for ridx in range(E_R.shape[0]):
+            if int(E_R[ridx, 0]) == dst_conn_id:
+                T_e[ridx] += mod_rate_coef * X[src_id, res_id]
+                break
 
     # ------------------------------------------------------------
     # Resource connections – two-phase evaluation
@@ -177,30 +198,6 @@ def step_jit(V, E_R, E_T, E_N, E_G, E_A, X, X_mods, T_e, V_pending, V_satisfied,
     for i in range(V.shape[0]):
         if not has_incoming[i]:
             V_satisfied[i] = False
-
-    # -----------------------------
-    # Update resource edge rates
-    #   • Start from each edge's base rate (stored in E_R[:,5]).
-    #   • Add contributions from label-modifier connections.
-    # -----------------------------
-
-    # Reset all rates to their base values (column 5 of E_R).
-    for ridx in range(E_R.shape[0]):
-        T_e[ridx] = E_R[ridx, 5]
-
-    # Apply label modifiers
-    for i in range(E_T.shape[0]):
-        # Row fields: (id, src.id, dst_conn.id, resource_id, rate)
-        src_id       = int(E_T[i, 1])
-        dst_conn_id  = int(E_T[i, 2])  # connection ID of the target resource edge
-        res_id       = int(E_T[i, 3])
-        mod_rate_coef = E_T[i, 4]
-
-        # Locate the corresponding resource-edge row index.
-        for ridx in range(E_R.shape[0]):
-            if int(E_R[ridx, 0]) == dst_conn_id:
-                T_e[ridx] += mod_rate_coef * X[src_id, res_id]
-                break
 
     # Clear pending flags for next iteration
     V_pending[:] = np.zeros(V.shape[0], dtype=np.bool_)
