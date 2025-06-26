@@ -118,13 +118,10 @@ class MachinationsScene(Scene):
             x, y = getattr(node, "pos", (0, 0))
             color = getattr(node, "color", "BLACK")
 
-            if node.type == ElementType.GATE:
-                dot = Square(side_length=0.7, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0]).rotate(3.14/4)
-            else:
-                dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0])
-                if node.firing_mode == FiringMode.INTERACTIVE:
-                    dot_2 = Circle(radius=0.38, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0])
-                    self.add(dot_2)
+            dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0])
+            if node.firing_mode == FiringMode.INTERACTIVE:
+                dot_2 = Circle(radius=0.38, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0])
+                self.add(dot_2)
             dot.set_fill("#f8f8f8")
             dot.set_z_index(1)
             node_displays[i] = dot
@@ -141,15 +138,11 @@ class MachinationsScene(Scene):
             k = 0
             # Determine which resource ids were explicitly set in the node definition.
             init_res_ids = {res.id for res, _ in getattr(node, "initial_resources", [])}
+            distrib_res_ids = {d.resource_type.id for d in getattr(node, "distributions", [])}
             for j, amount in enumerate(resources):
                 # Skip resources that were not mentioned in the constructor call for this node.
-                if node.type == ElementType.GATE:
-                    # For gates we still want to show only their configured resource_type
-                    if m.resources[j].id != node.resource_type.id:
-                        continue
-                else:
-                    if m.resources[j].id not in init_res_ids:
-                        continue
+                if m.resources[j].id not in [*init_res_ids, *distrib_res_ids]:
+                    continue
                 res_color = getattr(m.resources[j], "color", BLACK)
                 sq = (
                     Square(side_length=0.25, fill_opacity=0.9)
@@ -187,7 +180,7 @@ class MachinationsScene(Scene):
                 if hasattr(c, "resource_type") and c.resource_type is not None
                 else BLACK
             )
-            if c.type in [ElementType.TRIGGER, ElementType.LABEL_MODIFIER, ElementType.NODE_MODIFIER]:
+            if c.type in [ElementType.TRIGGER, ElementType.MODIFIER]:
                 arrow = Arrow(
                     start=[*p1, 0],
                     end=[*p2, 0],
@@ -263,7 +256,7 @@ class MachinationsScene(Scene):
 
             # Display rate as label + numeric value for easy in-place updating
             if hasattr(c, "rate"):
-                if c.type == ElementType.LABEL_MODIFIER or c.type == ElementType.NODE_MODIFIER:
+                if c.type == ElementType.MODIFIER:
                     label_str = "$\\dot{T}_{E_" + str(c.id) + "} =$"
                     frac = Fraction(c.rate).limit_denominator(100)
                     value_num = Tex("$\\frac{" + str(frac.numerator) + "}{" + str(frac.denominator) + "}$", font_size=12, color=BLACK)
@@ -285,7 +278,6 @@ class MachinationsScene(Scene):
 
                 self.add(label_tex, value_num)
 
-            # Predicate label (static)
             if hasattr(c, "predicate") and c.predicate is not None:
                 # Remove existing $ delimiters from predicate repr to avoid nested math environments
                 pred_body = str(c.predicate).strip("$")
@@ -296,7 +288,7 @@ class MachinationsScene(Scene):
                 pred_tex.move_to(arrow_dot.get_center() + DOWN * 0.195 * offset_factor)
                 self.add(pred_tex)
             arrow.points[-1] = arrow.tip.get_center()
-            if c.type in [ElementType.TRIGGER, ElementType.LABEL_MODIFIER, ElementType.NODE_MODIFIER]:
+            if c.type in [ElementType.TRIGGER, ElementType.MODIFIER]:
                 dl = DashedLine(
                     start=[*p1, 0],
                     end=arrow.tip.get_center(),
@@ -307,7 +299,6 @@ class MachinationsScene(Scene):
             self.add(arrow, arrow_dot, arrow_label)
 
         for step in renderer.history:
-            # Access by key to remain robust even if extra fields are present
             t            = step['t']
             X            = step['X']
             T_e          = step['T_e']
@@ -321,7 +312,7 @@ class MachinationsScene(Scene):
 
             # Show random gates generating
             for i,row in enumerate(value_displays):
-                if m.nodes[i].type == ElementType.GATE and m.nodes[i].distribution_mode == DistributionMode.NONDETERMINISTIC:
+                if m.nodes[i].distributions:
                     for j,col in enumerate(row):
                         if col:
                             animations.append(col.animate.set_value(X[i,j]))
@@ -353,18 +344,14 @@ class MachinationsScene(Scene):
                 for j, col in enumerate(row):
                     if col is None:
                         continue
-                    # Skip non-deterministic gates because they were already
-                    # updated in the earlier "random gates generating" phase;
-                    # updating them again causes visual duplication.
-                    if (
-                        m.nodes[i].type == ElementType.GATE and
-                        m.nodes[i].distribution_mode == DistributionMode.NONDETERMINISTIC
-                    ):
+                    # Already updated
+                    if (m.nodes[i].distributions):
                         continue
                     animations.append(col.animate.set_value(X[i, j]))
             # Update all rate displays
             for idx, rate_val in enumerate(T_e):
                 conn_id = m.resource_connections[idx].id
                 animations.append(rate_displays[conn_id].animate.set_value(rate_val))
-            self.play(*animations, run_time=0.5)
+            if animations:
+                self.play(*animations, run_time=0.5)
 
