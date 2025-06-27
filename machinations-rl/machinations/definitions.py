@@ -28,6 +28,14 @@ class FiringMode(Enum):
     INTERACTIVE = 2
     NONDETERMINISTIC = 3
 
+class TriggerMode(Enum):
+    PASSIVE = 0    # Only fires when source node fires
+    AUTOMATIC = 1  # Continuously checks predicate
+
+class PropagateMode(Enum):
+    STOP = 0      # Node does not propagate triggers when targeted
+    CONTINUE = 1  # Node propagates triggers when targeted
+
 class ElementType(Enum):
     NODE = 1
     RESOURCE_CONNECTION = 2
@@ -73,7 +81,7 @@ class Distribution:
         return choice
 
 class Node:
-    def __init__(self, firing_mode: FiringMode, initial_resources = [], distributions: List[Distribution] = None):
+    def __init__(self, firing_mode: FiringMode, initial_resources = [], distributions: List[Distribution] = None, propagate: PropagateMode = PropagateMode.STOP):
         # Please mirror this in Machinations.load
         self.id = None
         self.firing_mode = firing_mode
@@ -82,6 +90,7 @@ class Node:
         # whenever it fires
         self.distributions = distributions 
         self.initial_resources = initial_resources
+        self.propagate = propagate
 
 # ---------------------------------------------------------------------------
 # Special terminal nodes (WIN / TIE / LOSE)
@@ -153,12 +162,13 @@ class Modifier(Connection):
             ], dtype=np.float64)
 
 class Trigger(Connection):
-    def __init__(self, src: Node, dst: Node | Connection, resource_type = None, predicate: Predicate = None):
+    def __init__(self, src: Node, dst: Node | Connection, resource_type = None, 
+                 predicate: Predicate = None, mode: TriggerMode = TriggerMode.PASSIVE):
         super().__init__(src, dst)
         self.type = ElementType.TRIGGER
         self.predicate = predicate
         self.resource_type = resource_type
-
+        self.mode = mode
         self.dst_type = dst.type
         assert self.dst_type in [ElementType.RESOURCE_CONNECTION, ElementType.NODE]
 
@@ -170,6 +180,7 @@ class Trigger(Connection):
                 self.predicate.id if self.predicate else -1,
                 self.resource_type.id if self.resource_type else -1,
                 self.dst_type.value,
+                self.mode.value,
             ], dtype=np.float64)
 
 class Activator(Connection):

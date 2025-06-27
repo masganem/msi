@@ -69,6 +69,7 @@ class Machinations:
                 n.id,
                 n.firing_mode.value,
                 n.type.value,
+                n.propagate.value,
             ]
             for n in nodes
         ], dtype=np.float64)
@@ -118,7 +119,7 @@ class Machinations:
                 E_M[i, 2] = id_to_ridx[conn_id]
 
         # Triggers
-        E_G = np.array([c.pack() for c in triggers], dtype=np.float64).reshape(-1, 6)
+        E_G = np.array([c.pack() for c in triggers], dtype=np.float64).reshape(-1, 7)
 
         # Remap trigger destination ids when they point to resource connections
         for i in range(E_G.shape[0]):

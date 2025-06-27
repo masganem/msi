@@ -12,7 +12,7 @@ import signal
 import sys
 
 # deck_values = [min(rank, 10) for rank in range(1, 13) for _ in range(4)]
-deck_values = [min(rank, 10) for rank in range(1, 6) for _ in range(4)]
+deck_values = [min(rank, 10) for rank in range(1, 13) for _ in range(4)]
 
 card_value = Resource("Card")
 ace = Resource("Ace")
@@ -29,7 +29,7 @@ e_1 = Modifier(v_1, e_0, card_value, card_value, rate=1.0)
 
 # Ace
 v_2 = Node(FiringMode.PASSIVE, initial_resources=[(ace, inf)])
-e_2 = Trigger(v_1, v_2, card_value, Predicate("==", 1))
+e_2 = Trigger(v_1, v_2, card_value, Predicate("==", 1), mode=TriggerMode.AUTOMATIC)
 # Player gets ace
 e_3 = ResourceConnection(v_2, v_0, ace, rate=1)
 e_16 = Activator(v_0, e_3, turn, Predicate("==", 1)) 
@@ -38,11 +38,11 @@ e_16 = Activator(v_0, e_3, turn, Predicate("==", 1))
 lose_node = OutcomeNode("lose")
 tie_node = OutcomeNode("tie")
 win_node = OutcomeNode("win")
-e_4 = Trigger(v_0, lose_node, card_value, Predicate(">", 21))
+e_4 = Trigger(v_0, lose_node, card_value, Predicate(">", 21), mode=TriggerMode.AUTOMATIC)
 
 # Dealer
 v_3 = Node(FiringMode.PASSIVE, distributions=[Distribution(card_value, deck_values, infinite=False), Distribution(ace, [0]), Distribution(turn, [0])])
-e_17 = Trigger(v_3, win_node, card_value, Predicate(">", 21))
+e_17 = Trigger(v_3, win_node, card_value, Predicate(">", 21), mode=TriggerMode.AUTOMATIC)
 # Dealer draws card
 e_5 = ResourceConnection(v_1, v_3, card_value, rate=0)
 e_6 = Modifier(v_1, e_5, card_value, card_value, rate=1.0)
@@ -51,45 +51,57 @@ e_7 = ResourceConnection(v_2, v_3, ace, rate=1)
 e_15 = Activator(v_3, e_7, turn, Predicate("==", 1)) 
 
 # Turn logic – use triggers to pull from deck when `turn == 1`
-e_8 = Trigger(v_0, e_0, turn, Predicate("==", 1))
-e_9 = Trigger(v_3, e_5, turn, Predicate("==", 1))
+e_8 = Trigger(v_0, e_0, turn, Predicate("==", 1), mode=TriggerMode.AUTOMATIC)
+e_9 = Trigger(v_3, e_5, turn, Predicate("==", 1), mode=TriggerMode.AUTOMATIC)
 
 # Stand
 v_4 = Node(FiringMode.INTERACTIVE)
 e_10 = ResourceConnection(v_0, v_3, turn, rate=1)
-e_11 = Trigger(v_4, e_10)
+e_11 = Trigger(v_4, e_10, mode=TriggerMode.PASSIVE)
 
 # Win check
 v_5 = Node(FiringMode.PASSIVE, initial_resources=[(card_value, 0)])
 e_13 = Modifier(v_0, v_5, card_value, card_value, 1)
 e_14 = Modifier(v_3, v_5, card_value, card_value, -1)
-e_26 = Trigger(v_0, win_node, card_value, Predicate("==", 21))
-e_27 = Trigger(v_3, lose_node, card_value, Predicate("==", 21))
+e_26 = Trigger(v_0, win_node, card_value, Predicate("==", 21), mode=TriggerMode.AUTOMATIC)
+e_27 = Trigger(v_3, lose_node, card_value, Predicate("==", 21), mode=TriggerMode.AUTOMATIC)
 
-e_28 = Trigger(v_5, win_node)
-e_29 = Trigger(v_5, lose_node)
-e_30 = Trigger(v_5, tie_node)
-e_31 = Activator(v_5, win_node, card_value, Predicate(">", 0))
-e_32 = Activator(v_5, tie_node, card_value, Predicate("==", 0))
-e_33 = Activator(v_5, lose_node, card_value, Predicate("<", 0))
+e_28 = Trigger(v_5, win_node, card_value, Predicate(">", 0), mode=TriggerMode.PASSIVE)
+e_29 = Trigger(v_5, lose_node, card_value, Predicate("<", 0), mode=TriggerMode.PASSIVE)
+e_30 = Trigger(v_5, tie_node,  card_value, Predicate("==", 0), mode=TriggerMode.PASSIVE)
 
 # Ace bonus
-v_6 = Node(FiringMode.PASSIVE, distributions=[Distribution(card_value, [inf])])
+v_6 = Node(FiringMode.PASSIVE, distributions=[Distribution(card_value, [inf])], propagate=PropagateMode.CONTINUE)
 e_18 = ResourceConnection(v_6, v_0, card_value, 10)
 e_21 = Activator(v_0, e_18, ace, Predicate(">=", 1))
 e_23 = Activator(v_0, e_18, card_value, Predicate("<=", 12))
 e_19 = ResourceConnection(v_6, v_3, card_value, 10)
 e_22 = Activator(v_3, e_19, ace, Predicate(">=", 1))
 e_24 = Activator(v_3, e_19, card_value, Predicate("<=", 12))
-e_20 = Trigger(v_3, v_6, card_value, Predicate(">=", 17))
-e_12 = Trigger(v_6, v_5)
+e_20 = Trigger(v_3, v_6, card_value, Predicate(">=", 17), mode=TriggerMode.AUTOMATIC)
+e_12 = Trigger(v_6, v_5, mode=TriggerMode.PASSIVE)
 
 # player can only stand if cards >= 12
 e_25 = Activator(v_0, v_4, card_value, Predicate(">=", 12))
 
+# dealer's second hidden card
+v_7 = Node(FiringMode.PASSIVE, distributions=[Distribution(card_value, deck_values, infinite=False), Distribution(turn, [1], infinite=False)])
+e_31 = ResourceConnection(v_7, v_3, card_value, 0)
+e_32 = Modifier(v_7, e_31, card_value, card_value, 1)
+
+# Void
+v_8 = Node(FiringMode.PASSIVE)
+e_33 = ResourceConnection(v_7, v_8, turn, 1)
+
+e_34 = Trigger(v_7, v_7, turn, Predicate(">=", 1), mode=TriggerMode.AUTOMATIC)
+
+# Only check WC Dealer >= 17 if it's dealer's turn
+e_35 = Activator(v_3, v_6, turn, Predicate("==", 1))
+e_36 = Activator(v_3, v_5, turn, Predicate("==", 1))
+
 m = Machinations.load((
-    [v_0, v_1, v_2, v_3, v_4, v_5, v_6, lose_node, tie_node, win_node],
-    [e_0, e_1, e_2, e_3, e_4, e_5, e_6, e_7, e_8, e_9, e_10, e_11, e_12, e_13, e_14, e_15, e_16, e_17, e_18, e_19, e_20, e_21, e_22, e_23, e_24, e_25, e_26, e_27, e_28, e_29, e_30, e_31, e_32, e_33],
+    [v_0, v_1, v_2, v_3, v_4, v_5, v_6, v_7, v_8, lose_node, tie_node, win_node],
+    [e_0, e_1, e_2, e_3, e_4, e_5, e_6, e_7, e_8, e_9, e_10, e_11, e_12, e_13, e_14, e_15, e_16, e_17, e_18, e_19, e_20, e_21, e_22, e_23, e_24, e_25, e_26, e_27, e_28, e_29, e_30, e_31, e_32, e_33, e_34, e_35, e_36],
     [card_value, ace, turn],
 ))
 
@@ -106,6 +118,8 @@ v_3.pos = (0, -1.25)
 v_4.pos = (1.45, 0)
 v_5.pos = (-3, 1.25)
 v_6.pos = (-3, -1.25)
+v_7.pos = (0, -2.75)
+v_8.pos = (1.25, -2.75)
 lose_node.pos = (-2.5, 2.5)
 tie_node.pos = (-3.75, 0)
 win_node.pos = (-2.5, -2.5)
