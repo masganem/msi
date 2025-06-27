@@ -36,6 +36,7 @@ e_16 = Activator(v_0, e_3, turn, Predicate("==", 1))
 
 # Lose condition: hand total > 21
 lose_node = OutcomeNode("lose")
+tie_node = OutcomeNode("tie")
 win_node = OutcomeNode("win")
 e_4 = Trigger(v_0, lose_node, card_value, Predicate(">", 21))
 
@@ -62,6 +63,15 @@ e_11 = Trigger(v_4, e_10)
 v_5 = Node(FiringMode.PASSIVE, initial_resources=[(card_value, 0)])
 e_13 = Modifier(v_0, v_5, card_value, card_value, 1)
 e_14 = Modifier(v_3, v_5, card_value, card_value, -1)
+e_26 = Trigger(v_0, win_node, card_value, Predicate("==", 21))
+e_27 = Trigger(v_3, lose_node, card_value, Predicate("==", 21))
+
+e_28 = Trigger(v_5, win_node)
+e_29 = Trigger(v_5, lose_node)
+e_30 = Trigger(v_5, tie_node)
+e_31 = Activator(v_5, win_node, card_value, Predicate(">", 0))
+e_32 = Activator(v_5, tie_node, card_value, Predicate("==", 0))
+e_33 = Activator(v_5, lose_node, card_value, Predicate("<", 0))
 
 # Ace bonus
 v_6 = Node(FiringMode.PASSIVE, distributions=[Distribution(card_value, [inf])])
@@ -78,8 +88,8 @@ e_12 = Trigger(v_6, v_5)
 e_25 = Activator(v_0, v_4, card_value, Predicate(">=", 12))
 
 m = Machinations.load((
-    [v_0, v_1, v_2, v_3, v_4, v_5, v_6, lose_node, win_node],
-    [e_0, e_1, e_2, e_3, e_4, e_5, e_6, e_7, e_8, e_9, e_10, e_11, e_12, e_13, e_14, e_15, e_16, e_17, e_18, e_19, e_20, e_21, e_22, e_23, e_24, e_25],
+    [v_0, v_1, v_2, v_3, v_4, v_5, v_6, lose_node, tie_node, win_node],
+    [e_0, e_1, e_2, e_3, e_4, e_5, e_6, e_7, e_8, e_9, e_10, e_11, e_12, e_13, e_14, e_15, e_16, e_17, e_18, e_19, e_20, e_21, e_22, e_23, e_24, e_25, e_26, e_27, e_28, e_29, e_30, e_31, e_32, e_33],
     [card_value, ace, turn],
 ))
 
@@ -97,14 +107,8 @@ v_4.pos = (1.45, 0)
 v_5.pos = (-3, 1.25)
 v_6.pos = (-3, -1.25)
 lose_node.pos = (-2.5, 2.5)
+tie_node.pos = (-3.75, 0)
 win_node.pos = (-2.5, -2.5)
-# v_1.pos = (-1.5, 1.75)  # type: ignore[attr-defined]
-# lose_node.pos = (-1.25, -1.5)
-# v_2.pos = (0, -1.75)  # type: ignore[attr-defined]
-# v_3.pos = ( 1.25, 0)  # type: ignore[attr-defined]
-# v_4.pos = (0, 0)
-# win_node.pos = (1.25, -1.5)
-# v_6.pos = (1.25, 1.75)  # type: ignore[attr-defined]
 
 # Remaining nodes to place around the circle (exclude v_0 and v_3)
 other_nodes = [n for n in m.nodes if not hasattr(n, "pos")]

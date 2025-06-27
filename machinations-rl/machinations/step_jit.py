@@ -126,6 +126,40 @@ def step_jit(V, E_R, E_M, E_G, E_A, X, X_mods, T_e, T_e_mods, V_pending, V_satis
     for i in range(V.shape[0]):
         V_active[i] = (V[i, 1] == 1 or pending_flags[i] or V_targeted[i]) and not V_blocked[i]
 
+    # ------------------------------------------------------------
+    # NEW PASS 3 – triggers originating from nodes that are now
+    # active (because they fired this tick or were targeted by
+    # earlier triggers).  This ensures that *any* firing node
+    # propagates its outgoing triggers within the same tick.
+    # Only triggers **without** an explicit predicate are handled
+    # here – predicate-based triggers were already evaluated above.
+    # ------------------------------------------------------------
+    for i in range(E_G.shape[0]):
+        # Skip triggers already marked active or those guarded by a predicate
+        if E_G_active[i]:
+            continue
+        if int(E_G[i, 3]) != -1:
+            continue  # predicate-based triggers already handled
+
+        src_id  = int(E_G[i, 1])
+        if not V_active[src_id]:
+            continue  # source did not fire this tick
+
+        dest_id   = int(E_G[i, 2])
+        dest_type = int(E_G[i, 5])
+
+        # Activate trigger
+        E_G_active[i] = True
+        if dest_type == 1:  # ElementType.NODE
+            V_targeted[dest_id] = True
+        elif dest_type == 2:  # ElementType.RESOURCE_CONNECTION
+            R_triggered[dest_id] = not R_blocked[dest_id]
+
+    # Recompute V_active to incorporate any nodes that became
+    # targeted by the newly fired triggers above.
+    for i in range(V.shape[0]):
+        V_active[i] = (V[i, 1] == 1 or pending_flags[i] or V_targeted[i]) and not V_blocked[i]
+
     # Roll back previous modifier contributions so we can recompute them
     X -= X_mods
     T_e -= T_e_mods
