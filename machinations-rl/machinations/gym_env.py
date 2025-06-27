@@ -6,7 +6,7 @@ from gymnasium import spaces
 import numpy as np
 
 from .machinations import Machinations
-from .definitions import FiringMode
+from .definitions import FiringMode, OutcomeNode
 from render.renderer import Renderer
 
 class MachinationsEnv(gym.Env):
@@ -45,6 +45,11 @@ class MachinationsEnv(gym.Env):
             n.id for n in self._base_model.nodes if n.firing_mode == FiringMode.INTERACTIVE
         ]
         self.n_interactive: int = len(self._interactive_ids)
+
+        # Outcome nodes (WIN/TIE/LOSE)
+        self._outcome_map: dict[int, str] = {
+            n.id: n.outcome for n in self._base_model.nodes if isinstance(n, OutcomeNode)
+        }
 
         # ----------- Gymnasium spaces -----------
         # Action = binary vector deciding which interactive node(s) to fire next tick
@@ -106,6 +111,14 @@ class MachinationsEnv(gym.Env):
 
     def step(self, action):
         assert self._model is not None, "Call reset() before step()."
+        # If the episode has already terminated, do nothing.
+        if getattr(self._model, "terminated", False):
+            observation = self._build_observation()
+            reward = 0.0  # no additional reward
+            terminated = True
+            truncated = False
+            info: Dict[str, Any] = {"renderer": self._renderer} if self._renderer else {}
+            return observation, reward, terminated, truncated, info
         action = np.asarray(action, dtype=np.int8).flatten()
         if action.shape[0] != self.n_interactive:
             raise ValueError(f"Action must have length {self.n_interactive}.")
@@ -121,15 +134,33 @@ class MachinationsEnv(gym.Env):
         self._model.step()
         self._elapsed_steps += 1
 
-        # Log snapshot if renderer is on
+        # ----------------------------------------------------------------
+        # Check for terminal outcomes
+        # ----------------------------------------------------------------
+        outcome: str | None = None
+        for node_id, kind in self._outcome_map.items():
+            if self._model.V_active[node_id]:
+                outcome = kind
+                break
+
+        terminated = False
+        reward: float
+
+        if outcome is not None:
+            terminated = True
+            reward = {"win": 1.0, "tie": 0.0, "lose": -1.0}[outcome]
+        else:
+            terminated = False  # domain-specific termination could be added here
+            reward = float(self._reward_fn(self._model))
+
+        # Log snapshot if renderer is on (capture terminal frame as well)
         if self._renderer is not None:
             self._renderer._record_snapshot(extra={
                 'action': action.copy(),
+                'phase': 'post',
             })
 
         observation = self._build_observation()
-        reward = float(self._reward_fn(self._model))
-        terminated = False  # domain-specific termination could be added here
         truncated = (self._max_steps is not None) and (self._elapsed_steps >= self._max_steps)
         info: Dict[str, Any] = {"renderer": self._renderer} if self._renderer else {}
         return observation, reward, terminated, truncated, info

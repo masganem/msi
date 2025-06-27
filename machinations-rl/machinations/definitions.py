@@ -26,6 +26,7 @@ class FiringMode(Enum):
     PASSIVE = 0
     AUTOMATIC = 1
     INTERACTIVE = 2
+    NONDETERMINISTIC = 3
 
 class ElementType(Enum):
     NODE = 1
@@ -35,9 +36,41 @@ class ElementType(Enum):
     ACTIVATOR = 5
 
 class Distribution:
-    def __init__(self, resource_type: Resource, values):
+    def __init__(self, resource_type: Resource, values, *, infinite: bool = True):
+        """A resource distribution.
+
+        Parameters
+        ----------
+        resource_type : Resource
+            The type of resource generated.
+        values : Sequence
+            Population to sample from.
+        infinite : bool, optional
+            If *True* (default) the population is sampled **with** replacement
+            (i.e. unlimited supply).  If *False*, every sample is removed
+            from *values*; once the list becomes empty, further sampling has
+            no effect.
+        """
         self.resource_type = resource_type
-        self.values = values
+        # Store as a list so we can ``pop`` when finite.
+        self.values = list(values)
+        self.infinite = infinite
+
+    def draw(self, rng) -> float | None:
+        """Sample one value according to *infinite* flag.
+
+        Returns the drawn value **or** *None* if the distribution is empty
+        (finite and depleted).
+        """
+        if not self.values:
+            return None  # empty finite deck
+
+        choice = float(rng.choice(self.values))
+        if not self.infinite:
+            # Remove the selected card so it cannot be drawn again.
+            # Using list.remove rather than pop(index) keeps it simple.
+            self.values.remove(choice)
+        return choice
 
 class Node:
     def __init__(self, firing_mode: FiringMode, initial_resources = [], distributions: List[Distribution] = None):
@@ -49,6 +82,30 @@ class Node:
         # whenever it fires
         self.distributions = distributions 
         self.initial_resources = initial_resources
+
+# ---------------------------------------------------------------------------
+# Special terminal nodes (WIN / TIE / LOSE)
+# ---------------------------------------------------------------------------
+
+class OutcomeNode(Node):
+    """A node that immediately ends the episode when it fires.
+
+    Parameters
+    ----------
+    outcome : str
+        One of ``"win"``, ``"tie"``, ``"lose"``.
+    firing_mode : FiringMode, optional
+        Defaults to :pyattr:`FiringMode.PASSIVE` – typically an OutcomeNode
+        is triggered by another connection rather than sampling on its own.
+    """
+
+    VALID = {"win", "tie", "lose"}
+
+    def __init__(self, outcome: str, *, firing_mode: FiringMode = FiringMode.PASSIVE):
+        if outcome not in self.VALID:
+            raise ValueError(f"Outcome must be one of {self.VALID}, got {outcome!r}")
+        super().__init__(firing_mode=firing_mode, initial_resources=[], distributions=None)
+        self.outcome = outcome
 
 class Connection:
     def __init__(self, src: Node, dst: Node | Connection):
@@ -96,7 +153,7 @@ class Modifier(Connection):
             ], dtype=np.float64)
 
 class Trigger(Connection):
-    def __init__(self, src: Node, dst: Node | Connection, resource_type = None, predicate = None):
+    def __init__(self, src: Node, dst: Node | Connection, resource_type = None, predicate: Predicate = None):
         super().__init__(src, dst)
         self.type = ElementType.TRIGGER
         self.predicate = predicate
@@ -110,17 +167,17 @@ class Trigger(Connection):
                 self.id,
                 self.src.id,
                 self.dst.id,
-                self.predicate.id if c.predicate else -1,
-                self.resource_type.id if c.resource_type else -1,
+                self.predicate.id if self.predicate else -1,
+                self.resource_type.id if self.resource_type else -1,
                 self.dst_type.value,
             ], dtype=np.float64)
 
 class Activator(Connection):
-    def __init__(self, src: Node, dst: Node | Connection, predicate: Predicate, resource_type: Resource):
+    def __init__(self, src: Node, dst: Node | Connection, resource_type: Resource, predicate: Predicate):
         super().__init__(src, dst)
         self.type = ElementType.ACTIVATOR
-        self.predicate = predicate
         self.resource_type = resource_type
+        self.predicate = predicate
 
         self.dst_type = dst.type
         assert self.dst_type in [ElementType.RESOURCE_CONNECTION, ElementType.NODE]

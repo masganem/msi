@@ -10,6 +10,10 @@ class Renderer:
         Initialize with a Machinations model and record its initial state.
         """
         self.model = model
+        # Make the renderer discoverable from the model so Machinations.step
+        # can record intermediate snapshots (e.g., after node distributions
+        # are sampled but before resource transfers occur).
+        self.model._renderer = self  # type: ignore[attr-defined]
         self.history: list[dict] = []
         self._record_snapshot()
 
@@ -24,10 +28,14 @@ class Renderer:
             shallow-copied before insertion so that later mutations do not
             affect the stored history.
         """
+        # Allow caller to override T_e when passing predictive values (e.g.,
+        # "mid" phase).
+        te_override = extra.get('T_e').copy() if (extra and 'T_e' in extra) else self.model.T_e.copy() if True else None
+
         snap = {
             't': self.model.t,
             'X': self.model.X.copy(),
-            'T_e': self.model.T_e.copy(),
+            'T_e': te_override,
             'V_active': self.model.V_active.copy(),
             'V_pending': self.model.V_pending.copy(),
             'E_R_active': self.model.E_R_active.copy(),

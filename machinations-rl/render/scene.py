@@ -81,9 +81,11 @@ def chord_endpoints(src_center, dst_center, dst_is_connection: bool = False):
     u = vec / length                           # unit direction
 
     # Keep arrowheads safely outside node shapes.
-    R_SRC = 0.25                               # modest clearance at source
-    # Shorter clearance for node destinations so arrow ends closer.
-    R_DST = 0.25 if not dst_is_connection else 0.08
+    R_SRC = 0.34                               # modest clearance at source
+    # Bring the tip much closer when the arrow targets another *connection* –
+    # i.e. its destination visualised as a tiny dot.  Using zero clearance
+    # makes the tip apex coincide with the dot centre.
+    R_DST = 0.25 if not dst_is_connection else -0.1
 
     perp = vec / length
 
@@ -112,13 +114,16 @@ class MachinationsScene(Scene):
         ]
         rate_displays = [None for _ in m.connections]
         connection_displays = [None for _ in m.connections]
+        predicates_list = []
+        aliases_list = []
+        resources_list = []
 
         # Draw static graph based on renderer.model
         for i, (node, resources) in enumerate(zip(m.nodes, m.X)):
             x, y = getattr(node, "pos", (0, 0))
             color = getattr(node, "color", "BLACK")
 
-            dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=1).move_to([x, y, 0])
+            dot = Circle(radius=0.35, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0])
             if node.firing_mode == FiringMode.INTERACTIVE:
                 dot_2 = Circle(radius=0.38, color=color, stroke_width=2, fill_opacity=0).move_to([x, y, 0])
                 self.add(dot_2)
@@ -135,39 +140,54 @@ class MachinationsScene(Scene):
                 mode_label = Tex("*", font_size=20, color=BLACK).move_to([x+0.33,y+0.33,0])
                 self.add(mode_label)
 
-            k = 0
+            # Collect alias label (for legend) if provided
+            if hasattr(node, "alias"):
+                alias_str = getattr(node, "alias")
+                alias_tex = Tex(f"$V_{{{node.id}}} = \\text{{{alias_str}}}$", font_size=16, color=BLACK)
+                alias_tex.set_z_index(40)
+                aliases_list.append(alias_tex)
+
             # Determine which resource ids were explicitly set in the node definition.
-            init_res_ids = {res.id for res, _ in getattr(node, "initial_resources", [])}
-            distrib_res_ids = {d.resource_type.id for d in getattr(node, "distributions", [])}
-            for j, amount in enumerate(resources):
-                # Skip resources that were not mentioned in the constructor call for this node.
-                if m.resources[j].id not in [*init_res_ids, *distrib_res_ids]:
-                    continue
+            init_res_ids = {res.id for res, _ in node.initial_resources} if node.initial_resources else set()
+            distrib_res_ids = {d.resource_type.id for d in node.distributions} if node.distributions else set()
+
+            # Collect the indices of resources that should be displayed so we can
+            # compute a centred layout for their numeric labels.
+            display_res_indices: list[int] = []
+            for j, _ in enumerate(resources):
+                if m.resources[j].id in (*init_res_ids, *distrib_res_ids):
+                    display_res_indices.append(j)
+
+            n_vals = len(display_res_indices)
+            spacing = 0.175  # horizontal distance between successive values
+
+            for k, j in enumerate(display_res_indices):
+                amount = resources[j]
                 res_color = getattr(m.resources[j], "color", BLACK)
-                sq = (
-                    Square(side_length=0.25, fill_opacity=0.9)
-                        .set_stroke(res_color, width=2)
-                        .set_fill(res_color)
-                        .next_to(dot, DOWN, buff=0.05)
-                        .shift(RIGHT * k * 0.3)
-                    )
-                sq_label = (
-                        Text(m.resources[j].name, font_size=20, color=res_color)
-                        .next_to(sq, direction=DOWN, buff=-0.04)
-                        .scale(0.3)
-                    )
+
+                # Compute horizontal offset so the group of values is centred
+                # beneath the node.
+                offset_x = (k - (n_vals - 1) / 2) * spacing
+                shift_vec = DOWN * 0.175 + RIGHT * offset_x
+
                 sq_value = (
-                        Integer(amount, font_size=20)
-                        .next_to(sq, direction=ORIGIN)
-                        .scale(0.6)
-                    )
-                value_displays[i][j]=sq_value
-                self.add(sq, sq_label, sq_value)
-                k += 1
+                    Integer(amount, font_size=20, stroke_width=0.7, color=res_color)
+                    .next_to(dot, ORIGIN)
+                    .shift(shift_vec)
+                )
+                sq_value.scale(0.6)
+                sq_value.set_z_index(100)
+
+                value_displays[i][j] = sq_value
+                self.add(sq_value)
 
         for c in m.connections:
             c1 = np.array(getattr(c.src,  "pos", (0,0)), float)[:2]
             c2 = np.array(getattr(c.dst,  "pos", (0,0)), float)[:2]
+            # Destination is considered a "connection" when it is an actual
+            # Connection instance (i.e. Modifier/Activator points to a
+            # ResourceConnection).  We use this to shrink the final clearance
+            # so the arrow tip sits flush with the tiny connection dot.
             dst_is_conn = isinstance(c.dst, Connection)
 
             # Compute non-overlapping curvature radius for CurvedArrow
@@ -175,11 +195,29 @@ class MachinationsScene(Scene):
             custom_radius = _next_edge_radius(c.src.id, c.dst.id, base_rad)
 
             p1, p2 = chord_endpoints(c1, c2, dst_is_connection=dst_is_conn)
-            arrow_color = (
-                getattr(c.resource_type, "color", BLACK)
-                if hasattr(c, "resource_type") and c.resource_type is not None
-                else BLACK
-            )
+            # --------------------------------------------------
+            # Arrow color logic
+            #   • Triggers & Activators → BLACK
+            #   • Modifiers            → color of *destination* resource
+            #   • Resource connections → color of connection's resource_type
+            # --------------------------------------------------
+            if c.type in (ElementType.TRIGGER, ElementType.ACTIVATOR):
+                arrow_color = BLACK
+            elif c.type == ElementType.MODIFIER:
+                # Prefer destination resource color if available
+                if hasattr(c, "dst_resource_type") and c.dst_resource_type is not None:
+                    arrow_color = getattr(c.dst_resource_type, "color", BLACK)
+                elif hasattr(c, "resource_type") and c.resource_type is not None:
+                    arrow_color = getattr(c.resource_type, "color", BLACK)
+                else:
+                    arrow_color = BLACK
+            else:
+                arrow_color = (
+                    getattr(c.resource_type, "color", BLACK)
+                    if hasattr(c, "resource_type") and c.resource_type is not None
+                    else BLACK
+                )
+
             if c.type in [ElementType.TRIGGER, ElementType.MODIFIER]:
                 arrow = Arrow(
                     start=[*p1, 0],
@@ -192,7 +230,7 @@ class MachinationsScene(Scene):
 
                 # Add dot + label in the middle for triggers as well
                 arrow_dot = (
-                    Circle(radius=0.14, stroke_width=2, color=arrow_color, fill_opacity=1)
+                    Circle(radius=0.05, stroke_width=0, color=arrow_color, fill_opacity=1)
                     .set_fill(WHITE)
                     .move_to(arrow.points[len(arrow.points)//2])
                 )
@@ -234,7 +272,7 @@ class MachinationsScene(Scene):
 
                 # Middle dot that will carry the edge label
                 arrow_dot = (
-                    Circle(radius=0.14, stroke_width=2, color=arrow_color, fill_opacity=1)
+                    Circle(radius=0.05, stroke_width=0, color=arrow_color, fill_opacity=1)
                     .set_fill(WHITE)
                     .move_to(arrow.points[len(arrow.points)//2])
                 )
@@ -256,37 +294,57 @@ class MachinationsScene(Scene):
 
             # Display rate as label + numeric value for easy in-place updating
             if hasattr(c, "rate"):
-                if c.type == ElementType.MODIFIER:
-                    label_str = "$\\dot{T}_{E_" + str(c.id) + "} =$"
-                    frac = Fraction(c.rate).limit_denominator(100)
-                    value_num = Tex("$\\frac{" + str(frac.numerator) + "}{" + str(frac.denominator) + "}$", font_size=12, color=BLACK)
+                is_resource_conn = c.type == ElementType.RESOURCE_CONNECTION
+                is_modifier      = c.type == ElementType.MODIFIER
+
+                # --------------------------------------------------
+                # (1) Resource-connection rate == 1 → omit label
+                # --------------------------------------------------
+                if is_resource_conn and abs(c.rate - 1) < 1e-9:
+                    rate_displays[c.id] = None  # placeholder so index exists
+                # --------------------------------------------------
+                # (2) Modifier with ±1 rate → show + / – sign
+                # --------------------------------------------------
+                elif is_modifier and abs(abs(c.rate) - 1) < 1e-9:
+                    sign = "+" if c.rate > 0 else "-"
+                    sign_tex = Tex(sign, font_size=20, color=BLACK).move_to(arrow_dot.get_center() + np.array([.125, .125, 0]))
+                    sign_tex.set_z_index(21)
+                    self.add(sign_tex)
+                # --------------------------------------------------
+                # (3) All other rates → full label
+                # --------------------------------------------------
                 else:
-                    label_str = "$T_{E_" + str(c.id) + "} =$"
-                    value_num = Integer(c.rate, font_size=12, color=BLACK)
-                    if c.type == ElementType.RESOURCE_CONNECTION:
-                        rate_displays[c.id] = value_num  # store the numeric part for updates
+                    if is_modifier:
+                        label_str = f"$\\dot{{T}}_{{E_{{{c.id}}}}} =$"
+                        frac = Fraction(c.rate).limit_denominator(100)
+                        value_num = Tex(f"$\\frac{{{frac.numerator}}}{{{frac.denominator}}}$", font_size=12, color=BLACK)
+                    else:
+                        label_str = f"$T_{{E_{{{c.id}}}}} =$"
+                        value_num = Integer(c.rate, font_size=12, color=BLACK)
+                        if is_resource_conn:
+                            rate_displays[c.id] = value_num
 
-                label_tex = Tex(label_str, font_size=12, color=BLACK)
-                value_num.next_to(label_tex, RIGHT, buff=0.05)
+                    label_tex = Tex(label_str, font_size=12, color=BLACK)
+                    value_num.next_to(label_tex, RIGHT, buff=0.05)
 
-                # Ensure these labels sit above nodes as well
-                label_tex.set_z_index(40)
-                value_num.set_z_index(40)
+                    # Ensure these labels sit above nodes as well
+                    label_tex.set_z_index(40)
+                    value_num.set_z_index(40)
 
-                group_pos = arrow_dot.get_center() + DOWN * 0.195
-                VGroup(label_tex, value_num).move_to(group_pos)
+                    group_pos = arrow_dot.get_center() + DOWN * 0.195
+                    VGroup(label_tex, value_num).move_to(group_pos)
 
-                self.add(label_tex, value_num)
+                    self.add(label_tex, value_num)
 
+            # Collect predicate labels to list later
             if hasattr(c, "predicate") and c.predicate is not None:
-                # Remove existing $ delimiters from predicate repr to avoid nested math environments
                 pred_body = str(c.predicate).strip("$")
-                pred_text = "$P_{E_{" + str(c.id) + "}}\;=\;(" + pred_body + ")$"
-                pred_tex = Tex(pred_text, font_size=12, color=BLACK)
-                pred_tex.set_z_index(40)
-                offset_factor = 2 if hasattr(c, "rate") else 1
-                pred_tex.move_to(arrow_dot.get_center() + DOWN * 0.195 * offset_factor)
-                self.add(pred_tex)
+                pred_text = f"$P_{{E_{{{c.id}}}}} = ({pred_body})$"
+                print(f"[renderer] Collect predicate label for edge E_{c.id}: {pred_body}")
+                _pred_label = Tex(pred_text, font_size=16, color=BLACK)
+                _pred_label.set_z_index(40)
+                predicates_list.append(_pred_label)
+
             arrow.points[-1] = arrow.tip.get_center()
             if c.type in [ElementType.TRIGGER, ElementType.MODIFIER]:
                 dl = DashedLine(
@@ -298,6 +356,42 @@ class MachinationsScene(Scene):
                 self.add(dl)
             self.add(arrow, arrow_dot, arrow_label)
 
+        # ------------------------------------------------------------
+        # Top-left legend of node aliases
+        # ------------------------------------------------------------
+        if aliases_list:
+            alias_group = VGroup(*aliases_list).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+            alias_group.scale(0.8)
+            alias_group.to_corner(UP + LEFT)
+            self.add(alias_group)
+
+        # ------------------------------------------------------------
+        # Top-right legend of resources (name in its colour)
+        # ------------------------------------------------------------
+        for res in m.resources:
+            res_name = getattr(res, "name", f"R_{res.id}")
+            res_color = getattr(res, "color", BLACK)
+            res_tex = Tex(f"$\\text{{{res_name}}}$", font_size=22, color=res_color)
+            res_tex.set_z_index(40)
+            resources_list.append(res_tex)
+
+        if resources_list:
+            res_group = VGroup(*resources_list).arrange(DOWN, aligned_edge=RIGHT, buff=0.1)
+            res_group.scale(0.8)
+            res_group.to_corner(UP + RIGHT)
+            self.add(res_group)
+
+        # ------------------------------------------------------------
+        # Bottom-left list of predicate expressions
+        # ------------------------------------------------------------
+        if predicates_list:
+            total = len(predicates_list)
+            print(f"[renderer] Total predicate labels: {total}")
+            preds_group = VGroup(*predicates_list).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+            preds_group.scale(0.6)
+            preds_group.to_corner(DOWN + LEFT)
+            self.add(preds_group)
+
         for step in renderer.history:
             t            = step['t']
             X            = step['X']
@@ -307,51 +401,90 @@ class MachinationsScene(Scene):
             E_G_active   = step['E_G_active']
             print(f"{m.V_active=}")
 
+            phase = step.get("phase", "post")
+
+            # Time always advances with every snapshot
             animations = [time_display.animate.set_value(t)]
-            self.play(*animations, run_time=0.5)
 
-            # Show random gates generating
-            for i,row in enumerate(value_displays):
-                if m.nodes[i].distributions:
-                    for j,col in enumerate(row):
-                        if col:
-                            animations.append(col.animate.set_value(X[i,j]))
-            if animations:
-                self.play(*animations, run_time=0.5)
+            if phase == "pre":
+                # Pre-transfer snapshot: show new resource values *and* any
+                # updated edge rates so the viewer sees the numbers that the
+                # upcoming transfer will use.  Edge highlights are still
+                # skipped – they belong to the post-phase.
 
-            animations = []
-            for i, row in enumerate(E_G_active):
-                if row:
-                    arrow = connection_displays[m.triggers[i].id]
-                    animations.append(arrow.animate.set_stroke_width(2))
-            if animations:
-                self.play(*animations, run_time=0.5, rate_func=there_and_back)
+                # Update node resource values
+                for i, row in enumerate(value_displays):
+                    for j, col in enumerate(row):
+                        if col is None:
+                            continue
+                        animations.append(col.animate.set_value(X[i, j]))
 
-            animations = []
-            for i, row in enumerate(V_active):
-                if row:
-                    animations.append(node_displays[i].animate.set_stroke_width(5))
-            for i, row in enumerate(E_R_active):
-                if row:
-                    arrow = connection_displays[m.resource_connections[i].id]
-                    animations.append(arrow.animate.set_stroke_width(5))
-                    animations.append(arrow.tip.animate.move_to(arrow.points[-1]))
-            if animations:
-                self.play(*animations, run_time=1.0, rate_func=there_and_back)
+                # Do NOT update connection-rate labels here – they will be
+                # refreshed in the subsequent *post* snapshot so that the
+                # displayed value matches the actual transfer that is about
+                # to be visualised.
 
-            animations = []
+                # Play and continue to next snapshot.
+                if animations:
+                    self.play(*animations, run_time=0.5)
+                continue  # skip the rest of the loop for pre-phase
+
+            if phase == "mid":
+                # Show updated edge rates that will be used in the upcoming
+                # transfer.  We do NOT touch node resource values here – those
+                # will change only after the transfer.
+
+                for idx, rate_val in enumerate(T_e):
+                    conn_id = m.resource_connections[idx].id
+                    label = rate_displays[conn_id]
+                    if label is not None:
+                        animations.append(label.animate.set_value(rate_val))
+
+                if animations:
+                    self.play(*animations, run_time=0.3)
+                continue  # proceed to next snapshot
+
+            # --- POST phase (after kernel) ---
+            # Only resource values change here because edge-rate labels were
+            # already updated in the preceding *mid* snapshot.
+
+            # Store resource value updates to apply AFTER highlights
+            value_updates = []
             for i, row in enumerate(value_displays):
                 for j, col in enumerate(row):
                     if col is None:
                         continue
-                    # Already updated
-                    if (m.nodes[i].distributions):
-                        continue
-                    animations.append(col.animate.set_value(X[i, j]))
-            # Update all rate displays
-            for idx, rate_val in enumerate(T_e):
-                conn_id = m.resource_connections[idx].id
-                animations.append(rate_displays[conn_id].animate.set_value(rate_val))
-            if animations:
-                self.play(*animations, run_time=0.5)
+                    value_updates.append(col.animate.set_value(X[i, j]))
+
+            # ------------------------------------------------------------
+            # Highlight triggers first (E_G_active)
+            # ------------------------------------------------------------
+            highlight_anims = []
+            for i, row in enumerate(E_G_active):
+                if row:
+                    arrow = connection_displays[m.triggers[i].id]
+                    highlight_anims.append(arrow.animate.set_stroke_width(2))
+            if highlight_anims:
+                self.play(*highlight_anims, run_time=0.5, rate_func=there_and_back)
+
+            # ------------------------------------------------------------
+            # Highlight active nodes and resource connections
+            # ------------------------------------------------------------
+            highlight_anims = []
+            for i, row in enumerate(V_active):
+                if row:
+                    highlight_anims.append(node_displays[i].animate.set_stroke_width(5))
+            for i, row in enumerate(E_R_active):
+                if row:
+                    arrow = connection_displays[m.resource_connections[i].id]
+                    highlight_anims.append(arrow.animate.set_stroke_width(5))
+                    highlight_anims.append(arrow.tip.animate.move_to(arrow.points[-1]))
+            if highlight_anims:
+                self.play(*highlight_anims, run_time=1.0, rate_func=there_and_back)
+
+            # Now apply the deferred resource value updates
+            if value_updates:
+                self.play(*value_updates, run_time=0.5)
+
+            # rate labels remain unchanged in POST
 
