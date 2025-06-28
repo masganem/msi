@@ -240,6 +240,10 @@ class Machinations:
         
         self.t += 1
 
+        # Record final post-phase snapshot after the kernel completes
+        if hasattr(self, "_renderer") and getattr(self, "_renderer") is not None:
+            self._renderer._record_snapshot(extra={"phase": "post"})
+
         # Check for OutcomeNode activation; if any fired, mark simulation terminated.
         for node in self.nodes:
             if isinstance(node, OutcomeNode) and self.V_active[node.id]:

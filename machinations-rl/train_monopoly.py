@@ -2,7 +2,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
 from stable_baselines3.common.monitor import Monitor
-from monopoly import m, player, estate, money, buy  # Import node and resource references
+from monopoly import m, player, estate, money, buy, world, bank  # Import node and resource references
 from machinations.gym_env import MachinationsEnv
 import numpy as np
 import pathlib
@@ -12,11 +12,37 @@ import os
 import signal
 import sys
 from gymnasium import Wrapper
+import matplotlib.pyplot as plt
 
 # Parse CLI args
 TOTAL_TIMESTEPS = int(sys.argv[1]) if len(sys.argv) > 1 else 50000
 RENDER_FREQ = int(sys.argv[2]) if len(sys.argv) > 2 else None
 QUALITY = sys.argv[3] if len(sys.argv) > 3 else None
+CONTROL_MODE = sys.argv[4].lower() == "control" if len(sys.argv) > 4 else False
+
+if CONTROL_MODE:
+    print("\nRunning in CONTROL mode - using random actions instead of trained model")
+
+# Specify weights for resources at different nodes
+player.weights = {
+    estate.id: 0.0,  # Value estates highly
+    money.id: 0.000001   # Value money moderately
+}
+
+# Make only relevant nodes visible to the agent
+player.visible = True  # Agent can see its own resources
+world.visible = True   # Agent can see world state
+bank.visible = False   # Agent doesn't need to see bank's infinite resources
+
+# Weight rent-generating connections and make them visible
+for conn in m.resource_connections:
+    if conn.resource_type == money and conn.dst.id == player.id:  # Money flowing to a node
+        conn.weight = 0.05  # Value rent income rate
+        conn.visible = True  # Agent can see income rates
+    elif conn.resource_type == money and conn.src.id == player.id:  # Money flowing from player
+        conn.visible = True  # Agent can see expense rates
+    else:
+        conn.visible = False  # Hide other connections
 
 class AnimationCallback(BaseCallback):
     """Custom callback for saving animations of evaluation episodes."""
@@ -31,6 +57,9 @@ class AnimationCallback(BaseCallback):
             return True
             
         if self.n_calls % RENDER_FREQ == 0:
+            # Enable history recording just for this episode
+            self.eval_env.unwrapped._record_history = True
+            
             # Run one episode with animation recording
             obs, _ = self.eval_env.reset()
             done = False
@@ -38,24 +67,10 @@ class AnimationCallback(BaseCallback):
                 action, _ = self.model.predict(obs, deterministic=False)  # Allow exploration
                 # Ensure action is a numpy array and track it
                 action = np.array(action, dtype=np.int8)
-                old_estate = self.eval_env.unwrapped._model.X[player.id, estate.id]
-                old_money = self.eval_env.unwrapped._model.X[player.id, money.id]
-                old_buy_money = self.eval_env.unwrapped._model.X[buy.id, money.id]
                 
                 obs, _, terminated, truncated, info = self.eval_env.step(action)
                 done = terminated or truncated
                 
-                # Debug estate purchases
-                new_estate = self.eval_env.unwrapped._model.X[player.id, estate.id]
-                new_money = self.eval_env.unwrapped._model.X[player.id, money.id]
-                new_buy_money = self.eval_env.unwrapped._model.X[buy.id, money.id]
-                
-                if action[0] == 1:  # If buy action was chosen
-                    print(f"\nAttempted buy with ${old_money:.0f}")
-                    print(f"  Buy node money: ${old_buy_money:.0f} -> ${new_buy_money:.0f}")
-                if new_estate > old_estate:
-                    print(f"\nEstate purchased! Estate: {old_estate:.0f} -> {new_estate:.0f}, Money: ${old_money:.0f} -> ${new_money:.0f}")
-            
             # Save and render the animation
             r = info["renderer"]
             _renderer_pkl = pathlib.Path("render") / "renderer.pkl"
@@ -83,6 +98,9 @@ class AnimationCallback(BaseCallback):
                 proc.wait()
             except:
                 os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            
+            # Disable history recording after the episode
+            self.eval_env.unwrapped._record_history = False
             
             self.episode_count += 1
         return True
@@ -127,7 +145,8 @@ class ActionTrackingEnv(Wrapper):
 env = MachinationsEnv(
     m,
     max_steps=200,  # Longer episodes to allow estate investments to pay off
-    max_resource_value=10000.0  # Clip and normalize values to this maximum
+    max_resource_value=10000.0,  # Clip and normalize values to this maximum
+    record_history=False  # Don't need history for training
 )
 env = ActionTrackingEnv(env)  # Add action tracking
 env = Monitor(env)  # Add Monitor wrapper
@@ -140,7 +159,7 @@ eval_env = MachinationsEnv(
     m,
     max_steps=200,  # Keep consistent with training
     max_resource_value=10000.0,
-    record_history=RENDER_FREQ is not None  # Only record history if rendering
+    record_history=RENDER_FREQ is not None  # Only record history if we're going to render
 )
 eval_env = ActionTrackingEnv(eval_env)  # Add action tracking
 eval_env = Monitor(eval_env)  # Add Monitor wrapper
@@ -175,7 +194,7 @@ model = PPO(
     gamma=0.99,
     gae_lambda=0.95,
     clip_range=0.2,
-    ent_coef=0.05,  # Increased entropy for more exploration
+    ent_coef=0.005,  # Increased entropy for more exploration
     target_kl=0.03,  # Early stopping on divergence
     verbose=1,
     tensorboard_log="./logs/tensorboard/"
@@ -190,70 +209,134 @@ for _ in range(5):
 
 # Train the agent
 print("\nStarting training...")
-model.learn(
-    total_timesteps=TOTAL_TIMESTEPS,
-    callback=callbacks,
-    progress_bar=True
-)
+if not CONTROL_MODE:
+    model.learn(
+        total_timesteps=TOTAL_TIMESTEPS,
+        callback=callbacks,
+        progress_bar=True
+    )
 
-# Save the final model
-model.save("monopoly_ppo_final")
+    # Save the final model
+    model.save("monopoly_ppo_final")
 
 # Run some evaluation episodes
 print("\nRunning evaluation episodes with detailed resource tracking...")
 n_eval_episodes = 10
 episode_rewards = []
 episode_lengths = []
+survival_data = []  # Track episode lengths for survival analysis
 
-for episode in range(n_eval_episodes):
-    print(f"\nEpisode {episode + 1}:")
-    obs, _ = eval_env.reset()
-    done = False
-    total_reward = 0
-    steps = 0
-    max_estate = 0
-    action_counts = {0: 0, 1: 0}  # Track distribution of actions
+if CONTROL_MODE:
+    print("\nRunning in CONTROL mode - using random actions instead of trained model")
+    for episode in range(n_eval_episodes):
+        print(f"\nEpisode {episode + 1}:")
+        obs, _ = eval_env.reset()
+        done = False
+        total_reward = 0
+        steps = 0
+        max_estate = 0
+        action_counts = {0: 0, 1: 0}  # Track distribution of actions
+        
+        while not done:
+            action = eval_env.action_space.sample()  # Use random actions
+            action_counts[action[0]] += 1
+            
+            obs, reward, terminated, truncated, _ = eval_env.step(action)
+            done = terminated or truncated
+            
+            # Track resources after step
+            new_estate = eval_env.unwrapped._model.X[player.id, estate.id]
+            new_money = eval_env.unwrapped._model.X[player.id, money.id]
+            max_estate = max(max_estate, new_estate)
+            
+            # If we went bankrupt, override total reward with the loss penalty
+            if terminated and new_money <= 0:
+                total_reward = reward  # Just take the loss penalty
+            else:
+                total_reward += reward  # Otherwise accumulate normally
+            
+            steps += 1
+        
+        print(f"  Episode ended after {steps} steps")
+        print(f"  Final money: ${new_money:.0f}")
+        print(f"  Max estate owned: {max_estate:.0f}")
+        print(f"  Total reward: {total_reward:.2f}")
+        print(f"  Actions taken: {action_counts}")  # Show action distribution
+        
+        episode_rewards.append(total_reward)
+        episode_lengths.append(steps)
+        survival_data.append(steps)
     
-    while not done:
-        action, _ = model.predict(obs, deterministic=True)
-        # Ensure action is a numpy array and track it
-        action = np.array(action, dtype=np.int8)
-        action_counts[action[0]] += 1
+    print("\nControl Mode Evaluation Results:")
+    print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
+    print(f"Mean episode length: {np.mean(episode_lengths):.1f} +/- {np.std(episode_lengths):.1f}")
+else:
+    for episode in range(n_eval_episodes):
+        print(f"\nEpisode {episode + 1}:")
+        obs, _ = eval_env.reset()
+        done = False
+        total_reward = 0
+        steps = 0
+        max_estate = 0
+        action_counts = {0: 0, 1: 0}  # Track distribution of actions
         
-        # Track resources before step
-        old_estate = eval_env.unwrapped._model.X[player.id, estate.id]
-        old_money = eval_env.unwrapped._model.X[player.id, money.id]
-        old_buy_money = eval_env.unwrapped._model.X[buy.id, money.id]
+        while not done:
+            action, _ = model.predict(obs, deterministic=True)
+            # Ensure action is a numpy array and track it
+            action = np.array(action, dtype=np.int8)
+            action_counts[action[0]] += 1
+            
+            obs, reward, terminated, truncated, _ = eval_env.step(action)
+            done = terminated or truncated
+            
+            # Track resources after step
+            new_estate = eval_env.unwrapped._model.X[player.id, estate.id]
+            new_money = eval_env.unwrapped._model.X[player.id, money.id]
+            max_estate = max(max_estate, new_estate)
+            
+            # If we went bankrupt, override total reward with the loss penalty
+            if terminated and new_money <= 0:
+                total_reward = reward  # Just take the loss penalty
+            else:
+                total_reward += reward  # Otherwise accumulate normally
+            
+            steps += 1
         
-        obs, reward, terminated, truncated, _ = eval_env.step(action)
-        done = terminated or truncated
+        print(f"  Episode ended after {steps} steps")
+        print(f"  Final money: ${new_money:.0f}")
+        print(f"  Max estate owned: {max_estate:.0f}")
+        print(f"  Total reward: {total_reward:.2f}")
+        print(f"  Actions taken: {action_counts}")  # Show action distribution
         
-        # Track resources after step
-        new_estate = eval_env.unwrapped._model.X[player.id, estate.id]
-        new_money = eval_env.unwrapped._model.X[player.id, money.id]
-        new_buy_money = eval_env.unwrapped._model.X[buy.id, money.id]
-        max_estate = max(max_estate, new_estate)
-        
-        if action[0] == 1:  # If buy action was chosen
-            print(f"  Step {steps}: Attempted buy with ${old_money:.0f}")
-            print(f"    Buy node money: ${old_buy_money:.0f} -> ${new_buy_money:.0f}")
-        if new_estate > old_estate:
-            print(f"  Step {steps}: Estate purchased! Estate: {old_estate:.0f} -> {new_estate:.0f}, Money: ${old_money:.0f} -> ${new_money:.0f}")
-        elif action[0] == 1:  # Failed buy attempt
-            print(f"    Buy failed! Not enough money?")
-        
-        total_reward += reward
-        steps += 1
-    
-    print(f"  Episode ended after {steps} steps")
-    print(f"  Final money: ${new_money:.0f}")
-    print(f"  Max estate owned: {max_estate:.0f}")
-    print(f"  Total reward: {total_reward:.2f}")
-    print(f"  Actions taken: {action_counts}")  # Show action distribution
-    
-    episode_rewards.append(total_reward)
-    episode_lengths.append(steps)
+        episode_rewards.append(total_reward)
+        episode_lengths.append(steps)
+        survival_data.append(steps)
 
-print("\nEvaluation Results:")
-print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
-print(f"Mean episode length: {np.mean(episode_lengths):.1f} +/- {np.std(episode_lengths):.1f}") 
+    print("\nEvaluation Results:")
+    print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
+    print(f"Mean episode length: {np.mean(episode_lengths):.1f} +/- {np.std(episode_lengths):.1f}")
+    
+    # Plot survival rate
+    plt.figure(figsize=(10, 6))
+    timesteps = range(1, max(survival_data) + 1)
+    survival_rates = [sum(length >= t for length in survival_data) / len(survival_data) * 100 
+                     for t in timesteps]
+    
+    plt.plot(timesteps, survival_rates, 'b-', linewidth=2)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.xlabel('Timestep')
+    plt.ylabel('Survival Rate (%)')
+    plt.title('Agent Survival Rate Over Time')
+    
+    # Add annotations for key points
+    plt.annotate(f'Initial: 100%', (1, 100), xytext=(10, 95),
+                arrowprops=dict(facecolor='black', shrink=0.05))
+    
+    final_rate = survival_rates[-1]
+    plt.annotate(f'Final: {final_rate:.1f}%', 
+                (timesteps[-1], final_rate),
+                xytext=(-60, 20), textcoords='offset points',
+                arrowprops=dict(facecolor='black', shrink=0.05))
+    
+    plt.savefig('survival_rate.png')
+    plt.close() 
