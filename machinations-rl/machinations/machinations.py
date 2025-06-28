@@ -101,7 +101,7 @@ class Machinations:
 
 
         # Resource connections
-        E_R = np.array([c.pack() for c in resource_connections], dtype=np.float64).reshape(-1, 5)
+        E_R = np.array([c.pack() for c in resource_connections], dtype=np.float64).reshape(-1, 6)
 
         # Modifiers
         E_M = np.array([c.pack() for c in modifiers], dtype=np.float64).reshape(-1, 7)

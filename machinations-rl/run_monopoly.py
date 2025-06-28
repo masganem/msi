@@ -10,6 +10,7 @@ import signal
 # RENDERING SETUP #
 # =============== #
 if len(sys.argv) > 2:
+    lose_node.pos = (0, 3)
     bank.pos = (-3, 0)
     world.pos = (3, 0)
     buy.pos = (0, -3)
@@ -59,6 +60,11 @@ if len(sys.argv) > 1:
 for i in range(steps):
     action = env.action_space.sample()
     obs, reward, terminated, truncated, info = env.step(action)
+    print(f"Episode #{i}")
+    print(f"Observation: {obs}")
+    print(f"Reward: {reward}")
+    if terminated:
+        break
 
 # ================ #
 # BEGIN RENDERING  #

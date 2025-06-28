@@ -149,11 +149,19 @@ def step_jit(V, E_R, E_M, E_G, E_A, X, X_mods, T_e, T_e_mods, V_pending, V_satis
 
         res_idx = int(E_R[i, 3])
         amount  = T_e[i]
+        allow_partial = bool(E_R[i, 5])  # Get the allow_partial flag
 
-        if X[src_id, res_idx] >= amount:
+        available = X[src_id, res_idx]
+        if available >= amount:
+            # Full transfer possible
             X[src_id, res_idx]  -= amount
             X[dest_id, res_idx] += amount
             E_R_satisfied[i] = True
+        elif allow_partial and available > 0:
+            # Partial transfer
+            X[src_id, res_idx]  = 0  # Transfer everything available
+            X[dest_id, res_idx] += available
+            E_R_satisfied[i] = True  # Mark as satisfied since we transferred what we could
 
     # Stage-2 modifiers: those that change NODE_TARGETING rates
     for i in range(E_M.shape[0]):

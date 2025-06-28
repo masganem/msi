@@ -23,6 +23,10 @@ class MachinationsEnv(gym.Env):
         timeout.
     record_history : bool, optional
         Whether to record a visualisable history of the simulation.
+    max_resource_value : float, optional
+        Maximum value for any resource. Values above this will be clipped.
+        This helps handle infinite values and normalize the observation space.
+        Defaults to 10000.0.
     """
 
     metadata = {"render_modes": []}  # rendering handled separately via render/scene.py
@@ -30,10 +34,12 @@ class MachinationsEnv(gym.Env):
     def __init__(self,
                  base_model: Machinations,
                  max_steps: int | None = None,
-                 record_history: bool = False):
+                 record_history: bool = False,
+                 max_resource_value: float = 10000.0):
         super().__init__()
         self._base_model: Machinations = copy.deepcopy(base_model)
         self._model: Machinations | None = None
+        self._max_resource_value = max_resource_value
 
         # Interactive nodes (actionable by the agent)
         self._interactive_ids: List[int] = [
@@ -56,14 +62,14 @@ class MachinationsEnv(gym.Env):
         X_shape = self._base_model.X.shape  # (N, R)
         Te_shape = self._base_model.T_e.shape  # (E_R,)
         low = np.zeros(X_shape, dtype=np.float64)
-        high = np.full(X_shape, np.inf, dtype=np.float64)
+        high = np.full(X_shape, self._max_resource_value, dtype=np.float64)
         self._obs_low = np.concatenate([
             low.flatten(),
             np.zeros(Te_shape, dtype=np.float64)
         ])
         self._obs_high = np.concatenate([
             high.flatten(),
-            np.full(Te_shape, np.inf, dtype=np.float64)
+            np.full(Te_shape, self._max_resource_value, dtype=np.float64)
         ])
         self.observation_space = spaces.Box(
             low=self._obs_low,
@@ -159,11 +165,20 @@ class MachinationsEnv(gym.Env):
     # Helpers
     # ------------------------------------------------------------
     def _build_observation(self) -> np.ndarray:
-        """Flatten X and T_e into a 1-D observation."""
+        """Flatten X and T_e into a 1-D observation and normalize values."""
         assert self._model is not None
-        flat_X = self._model.X.flatten()
+        
+        # Clip infinite values and normalize X
+        X_clipped = np.clip(self._model.X, 0, self._max_resource_value)
+        T_e_clipped = np.clip(self._model.T_e, 0, self._max_resource_value)
+        
+        # Normalize to [0, 1] range
+        X_norm = X_clipped / self._max_resource_value
+        T_e_norm = T_e_clipped / self._max_resource_value
+        
+        # Combine into observation
         obs = self._obs_buffer  # reuse buffer
-        np.concatenate((flat_X, self._model.T_e), out=obs)
+        np.concatenate((X_norm.flatten(), T_e_norm), out=obs)
         return obs.copy()  # Gymnasium expects a new array each call
 
     # ------------------------------------------------------------

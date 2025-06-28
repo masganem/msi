@@ -124,11 +124,12 @@ class Connection:
         self.predicate = None
 
 class ResourceConnection(Connection):
-    def __init__(self, src: Node, dst: Node, resource_type: Resource, rate=1.0):
+    def __init__(self, src: Node, dst: Node, resource_type: Resource, rate=1.0, allow_partial=False):
         super().__init__(src, dst)
         self.type = ElementType.RESOURCE_CONNECTION
         self.rate = rate
         self.resource_type = resource_type
+        self.allow_partial = allow_partial
 
     def pack(self):
         return np.array([
@@ -136,7 +137,8 @@ class ResourceConnection(Connection):
                 self.src.id,
                 self.dst.id,
                 self.resource_type.id,
-                self.rate,  
+                self.rate,
+                float(self.allow_partial),  # Pack boolean as float for numpy array
             ], dtype=np.float64)
 
 
