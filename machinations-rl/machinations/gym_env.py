@@ -21,10 +21,6 @@ class MachinationsEnv(gym.Env):
     max_steps : int, optional
         Episode length limit.  If *None*, the episode never terminates on a
         timeout.
-    reward_fn : callable, optional
-        `reward = reward_fn(model)` is called *after* every simulation step to
-        compute the scalar reward.  If *None*, the default reward is the total
-        sum of all resources across all nodes.
     record_history : bool, optional
         Whether to record a visualisable history of the simulation.
     """
@@ -34,7 +30,6 @@ class MachinationsEnv(gym.Env):
     def __init__(self,
                  base_model: Machinations,
                  max_steps: int | None = None,
-                 reward_fn: Callable[[Machinations], float] | None = None,
                  record_history: bool = False):
         super().__init__()
         self._base_model: Machinations = copy.deepcopy(base_model)
@@ -82,9 +77,6 @@ class MachinationsEnv(gym.Env):
 
         # Episode bookkeeping
         self._max_steps = max_steps
-        self._reward_fn: Callable[[Machinations], float] = (
-            reward_fn if reward_fn is not None else self._default_reward
-        )
         self._elapsed_steps: int = 0
 
         # Pre-allocate observation buffer for performance
@@ -135,7 +127,7 @@ class MachinationsEnv(gym.Env):
         self._elapsed_steps += 1
 
         # ----------------------------------------------------------------
-        # Check for terminal outcomes
+        # Check for terminal outcomes and assign rewards
         # ----------------------------------------------------------------
         outcome: str | None = None
         for node_id, kind in self._outcome_map.items():
@@ -143,15 +135,13 @@ class MachinationsEnv(gym.Env):
                 outcome = kind
                 break
 
-        terminated = False
-        reward: float
-
+        # Only assign rewards on terminal states
         if outcome is not None:
             terminated = True
             reward = {"win": 1.0, "tie": 0.0, "lose": -1.0}[outcome]
         else:
-            terminated = False  # domain-specific termination could be added here
-            reward = float(self._reward_fn(self._model))
+            terminated = False
+            reward = 0.0  # No reward during intermediate steps
 
         # Log snapshot if renderer is on (capture terminal frame as well)
         if self._renderer is not None:
@@ -175,11 +165,6 @@ class MachinationsEnv(gym.Env):
         obs = self._obs_buffer  # reuse buffer
         np.concatenate((flat_X, self._model.T_e), out=obs)
         return obs.copy()  # Gymnasium expects a new array each call
-
-    @staticmethod
-    def _default_reward(model: Machinations) -> float:
-        """Default reward: total amount of all resources across all nodes."""
-        return float(model.X.sum())
 
     # ------------------------------------------------------------
     # Convenience accessors
