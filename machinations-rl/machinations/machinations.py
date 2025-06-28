@@ -50,6 +50,7 @@ class Machinations:
         self.V_active = V_active
         self.E_R_active = E_R_active
         self.E_G_active = E_G_active
+        self.R_triggered = np.zeros((1024,), dtype=np.bool_)
         # Flag indicating the model has reached a terminal outcome (WIN/TIE/LOSE)
         self.terminated = False
 
@@ -207,7 +208,7 @@ class Machinations:
                 if v is not None:
                     self.X[node.id, res_idx] = v
 
-        # ------------------------------------------------------------
+                # ------------------------------------------------------------
         # Record a snapshot *before* the transfer kernel so the renderer can
         # show freshly drawn random values (e.g., deck contents) ahead of the
         # actual resource movement.
@@ -215,42 +216,28 @@ class Machinations:
         if hasattr(self, "_renderer") and getattr(self, "_renderer") is not None:
             self._renderer._record_snapshot(extra={"phase": "pre"})
 
-        # ------------------------------------------------------------
-        # Predict connection rates **after** Stage-1 modifiers so they can be
-        # displayed ahead of the actual transfer.  This uses the same formula
-        # as the JIT kernel: new_rate = baseline + Σ src_val * coef for every
-        # Modifier that targets a RESOURCE_CONNECTION.
-        # ------------------------------------------------------------
-        if hasattr(self, "_renderer") and getattr(self, "_renderer") is not None:
-            import numpy as _np
 
-            # Baseline = current T_e minus the modifier deltas that are still
-            # stored in T_e_mods (they will be rolled back at the start of the
-            # kernel).
-            baseline = self.T_e - self.T_e_mods
-            predicted = baseline.copy()
-
-            for i in range(self.E_M.shape[0]):
-                dst_type = int(self.E_M[i, 6])
-                if dst_type != ElementType.RESOURCE_CONNECTION.value:
-                    continue  # only connection-targeting mods
-
-                src_id     = int(self.E_M[i, 1])
-                dst_id     = int(self.E_M[i, 2])  # index into E_R array
-                src_res_id = int(self.E_M[i, 3])
-                coef       = self.E_M[i, 5]
-
-                predicted[dst_id] += self.X[src_id, src_res_id] * coef
-
-            self._renderer._record_snapshot(extra={"phase": "mid", "T_e": predicted})
 
         # 2. Run the simulation kernel.
+        # Create snapshot arrays to capture X and T_e values during execution
+        T_e_snapshot = np.zeros_like(self.T_e)
+        X_snapshot = np.zeros_like(self.X)
+        
         step_jit(
             self.V, self.E_R, self.E_M, self.E_G,
             self.E_A, self.X, self.X_mods, self.T_e, self.T_e_mods, self.V_pending,
             self.V_satisfied, self.pred_ops, self.pred_cs, self.V_active,
-            self.E_R_active, self.E_G_active
+            self.E_R_active, self.E_G_active, self.R_triggered, T_e_snapshot, X_snapshot
         )
+        
+        # Record mid-phase snapshot with the actual X and T_e values that were used
+        if hasattr(self, "_renderer") and getattr(self, "_renderer") is not None:
+            self._renderer._record_snapshot(extra={
+                "phase": "mid", 
+                "T_e": T_e_snapshot.copy(),
+                "X": X_snapshot.copy()
+            })
+        
         self.t += 1
 
         # Check for OutcomeNode activation; if any fired, mark simulation terminated.

@@ -430,10 +430,17 @@ class MachinationsScene(Scene):
                 continue  # skip the rest of the loop for pre-phase
 
             if phase == "mid":
-                # Show updated edge rates that will be used in the upcoming
-                # transfer.  We do NOT touch node resource values here – those
-                # will change only after the transfer.
+                # Show updated edge rates and node values that will be used in the upcoming
+                # transfer.
 
+                # Update node resource values (now includes modifier effects)
+                for i, row in enumerate(value_displays):
+                    for j, col in enumerate(row):
+                        if col is None:
+                            continue
+                        animations.append(col.animate.set_value(X[i, j]))
+
+                # Update edge rates
                 for idx, rate_val in enumerate(T_e):
                     conn_id = m.resource_connections[idx].id
                     label = rate_displays[conn_id]

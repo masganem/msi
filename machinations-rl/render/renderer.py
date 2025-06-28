@@ -28,13 +28,14 @@ class Renderer:
             shallow-copied before insertion so that later mutations do not
             affect the stored history.
         """
-        # Allow caller to override T_e when passing predictive values (e.g.,
+        # Allow caller to override T_e and X when passing predictive values (e.g.,
         # "mid" phase).
-        te_override = extra.get('T_e').copy() if (extra and 'T_e' in extra) else self.model.T_e.copy() if True else None
+        te_override = extra.get('T_e').copy() if (extra and 'T_e' in extra) else self.model.T_e.copy()
+        x_override = extra.get('X').copy() if (extra and 'X' in extra) else self.model.X.copy()
 
         snap = {
             't': self.model.t,
-            'X': self.model.X.copy(),
+            'X': x_override,
             'T_e': te_override,
             'V_active': self.model.V_active.copy(),
             'V_pending': self.model.V_pending.copy(),

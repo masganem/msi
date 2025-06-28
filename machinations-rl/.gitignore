@@ -2,3 +2,5 @@ env/
 build/
 media/
 __pycache__/
+logs/
+animations/

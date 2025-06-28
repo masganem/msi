@@ -141,10 +141,14 @@ class MachinationsEnv(gym.Env):
                 outcome = kind
                 break
 
-        # Only assign rewards on terminal states
+        # Assign rewards for terminal states and max steps
+        truncated = (self._max_steps is not None) and (self._elapsed_steps >= self._max_steps)
         if outcome is not None:
             terminated = True
             reward = {"win": 1.0, "tie": 0.0, "lose": -1.0}[outcome]
+        elif truncated:
+            terminated = False
+            reward = 1.0  # Reward for surviving to max steps
         else:
             terminated = False
             reward = 0.0  # No reward during intermediate steps
@@ -157,7 +161,6 @@ class MachinationsEnv(gym.Env):
             })
 
         observation = self._build_observation()
-        truncated = (self._max_steps is not None) and (self._elapsed_steps >= self._max_steps)
         info: Dict[str, Any] = {"renderer": self._renderer} if self._renderer else {}
         return observation, reward, terminated, truncated, info
 
