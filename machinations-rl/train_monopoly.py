@@ -328,7 +328,7 @@ class SimpleEvalTracker(EvalCallback):
                 if len(self.evaluations_length) > 0:
                     mean_ep_length = np.mean(self.evaluations_length[-1])
                     eval_episode_lengths.append(mean_ep_length)
-                    print(f"📊 Eval at {self.num_timesteps}: Episode length = {mean_ep_length:.1f}")
+                    print(f"📊 Avaliação em {self.num_timesteps}: Duração do episódio = {mean_ep_length:.1f}")
         
         return result
 
@@ -399,7 +399,7 @@ for _ in range(5):
     print(f"  {env.action_space.sample()}")
 
 # Train the agent
-print("\nStarting training...")
+print("\nIniciando treinamento...")
 if not CONTROL_MODE:
     model.learn(
         total_timesteps=TOTAL_TIMESTEPS,
@@ -426,23 +426,23 @@ if len(eval_timesteps) > 1:
         moving_avg = eval_episode_lengths
     
     # Plot raw points (lighter) and moving average (prominent)
-    plt.plot(eval_timesteps, eval_episode_lengths, 'o-', color='lightblue', alpha=0.5, markersize=4, linewidth=1, label='Raw Evaluations')
-    plt.plot(eval_timesteps, moving_avg, 'bo-', linewidth=2, markersize=4, label=f'Moving Average (window={window_size})')
+    plt.plot(eval_timesteps, eval_episode_lengths, 'o-', color='lightblue', alpha=0.5, markersize=4, linewidth=1, label='Avaliações Brutas')
+    plt.plot(eval_timesteps, moving_avg, 'bo-', linewidth=2, markersize=4, label=f'Média Móvel (janela={window_size})')
     
-    plt.xlabel('Training Timesteps')
-    plt.ylabel('Evaluation Episode Length')
-    plt.title('Agent Learning Progress: Episode Length vs Training Steps (Moving Average)')
+    plt.xlabel('Passos de Treinamento')
+    plt.ylabel('Duração do Episódio')
+    plt.title('Progresso de Aprendizado do Agente: Duração do Episódio vs Passos de Treinamento (Média Móvel)')
     plt.grid(True, alpha=0.3)
-    plt.axhline(y=30, color='r', linestyle='--', alpha=0.7, label='Max Episode Length (30)')
+    plt.axhline(y=30, color='r', linestyle='--', alpha=0.7, label='Duração Máxima do Episódio (30)')
     plt.legend(loc='upper right')
     plt.savefig('eval_progress.png', dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"📊 Evaluation progress plot saved: eval_progress.png (moving average with window {window_size})")
+    print(f"📊 Gráfico de progresso da avaliação salvo: eval_progress.png (média móvel com janela {window_size})")
 else:
-    print("⚠️  Not enough evaluation data for plotting")
+    print("⚠️  Dados de avaliação insuficientes para plotagem")
 
 # Run some evaluation episodes
-print("\nRunning evaluation episodes with detailed resource tracking...")
+print("\nExecutando episódios de avaliação com rastreamento detalhado de recursos...")
 n_eval_episodes = 1000
 episode_rewards = []
 episode_lengths = []
@@ -496,11 +496,11 @@ if CONTROL_MODE:
         survival_data.append(steps)
     
     if NEVER_BUY_MODE:
-        print("\nControl_0 Mode Evaluation Results:")
+        print("\nResultados da Avaliação - Modo Control_0:")
     else:
-        print("\nControl Mode Evaluation Results:")
-    print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
-    print(f"Mean episode length: {np.mean(episode_lengths):.1f} +/- {np.std(episode_lengths):.1f}")
+        print("\nResultados da Avaliação - Modo Control:")
+    print(f"Recompensa média: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
+    print(f"Duração média do episódio: {np.mean(episode_lengths):.1f} +/- {np.std(episode_lengths):.1f}")
 else:
     for episode in range(n_eval_episodes):
         print(f"\nEpisode {episode + 1}:")
@@ -544,9 +544,9 @@ else:
         episode_lengths.append(steps)
         survival_data.append(steps)
 
-    print("\nEvaluation Results:")
-    print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
-    print(f"Mean episode length: {np.mean(episode_lengths):.1f} +/- {np.std(episode_lengths):.1f}")
+    print("\nResultados da Avaliação:")
+    print(f"Recompensa média: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
+    print(f"Duração média do episódio: {np.mean(episode_lengths):.1f} +/- {np.std(episode_lengths):.1f}")
 
 # Plot episode lengths over episodes (sample every 10th for clarity) - MOVED OUTSIDE IF/ELSE
 plt.figure(figsize=(10, 6))
@@ -562,20 +562,21 @@ plt.scatter(sample_episodes, sample_lengths,
             c=['red' if length < 30 else 'green' for length in sample_lengths], 
             s=20, alpha=0.8)
 plt.grid(True, linestyle='--', alpha=0.7)
-plt.xlabel('Episode Number')
-plt.ylabel('Episode Length (Steps)')
-plt.title('Episode Length per Episode (Red=Died, Green=Survived, Every 10th Episode Shown)')
-plt.axhline(y=30, color='black', linestyle='--', alpha=0.7, label='Max Episode Length (30)')
+plt.xlabel('Episódio')
+plt.ylabel('Duração do Episódio')
+TITLE_CONTEXT = 'CONTROL_0' if NEVER_BUY_MODE else 'CONTROL' if CONTROL_MODE else 'PPO'
+plt.title(f'Duração de episódios amostrados ({TITLE_CONTEXT})')
+plt.axhline(y=30, color='black', linestyle='--', alpha=0.7, label='Duração Máxima do Episódio (30)')
 
 # For PPO, show best achieved performance; for control modes, show mean
 if not CONTROL_MODE and len(eval_episode_lengths) > 0:
     best_mean_length = max(eval_episode_lengths)
-    plt.axhline(y=best_mean_length, color='orange', linestyle='-', alpha=0.8, label=f'Best Mean Episode Length ({best_mean_length:.1f})')
-    print(f"📊 Best mean episode length achieved during training: {best_mean_length:.1f}")
+    plt.axhline(y=best_mean_length, color='orange', linestyle='-', alpha=0.8, label=f'Melhor Duração Média ({best_mean_length:.1f})')
+    print(f"📊 Melhor duração média do episódio alcançada durante o treinamento: {best_mean_length:.1f}")
 else:
     mean_length = np.mean(survival_data)
-    plt.axhline(y=mean_length, color='orange', linestyle='-', alpha=0.8, label=f'Mean Episode Length ({mean_length:.1f})')
-    print(f"📊 Mean episode length: {mean_length:.1f}")
+    plt.axhline(y=mean_length, color='orange', linestyle='-', alpha=0.8, label=f'Duração Média do Episódio ({mean_length:.1f})')
+    print(f"📊 Duração média do episódio: {mean_length:.1f}")
 
 plt.legend(loc='upper right')
 

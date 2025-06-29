@@ -8,6 +8,7 @@ luck = Resource("Luck")
 
 # REBALANCED: Increased pressure to invest while keeping it learnable
 rent_values = np.array([*range(2, 8, 2), 10, 10, 12, 12, 15, 15])
+print(rent_values)
 rent_distribution = Distribution(luck, rent_values)
 
 # Outcomes
