@@ -223,9 +223,19 @@ if len(sys.argv) > 2:
     else:
         print(f"[warn] Unknown quality '{sys.argv[2]}', using 'm'.")
 
-cmd = ["manim", f"-q{quality}", "render/scene.py", "MachinationsScene"]
+cmd = ["manim", 
+      f"-q{quality}",
+      "--fps", "15",                # Reduce framerate for faster rendering
+      "--disable_caching",          # Faster for one-off renders
+      "--format=mp4",              # Force mp4 output
+      "--renderer=cairo",          # Use cairo renderer which is faster for 2D
+      "render/scene.py", 
+      "MachinationsScene"]
 # Suppress Manim's stdout/stderr to keep the console quiet
-proc = subprocess.Popen(cmd, preexec_fn=os.setsid)
+proc = subprocess.Popen(cmd, 
+                      preexec_fn=os.setsid,
+                      stdout=subprocess.DEVNULL,    # Actually suppress stdout
+                      stderr=subprocess.DEVNULL)    # Actually suppress stderr
 
 try:
     proc.wait()

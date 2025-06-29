@@ -96,8 +96,9 @@ class MachinationsEnv(gym.Env):
         }
 
         # ----------- Gymnasium spaces -----------
-        # Action = binary vector deciding which interactive node(s) to fire next tick
-        self.action_space = spaces.MultiBinary(self.n_interactive)
+        # Action = discrete choice of which interactive node(s) to fire next tick
+        # For single interactive node, this becomes 0=don't fire, 1=fire
+        self.action_space = spaces.Discrete(2 ** self.n_interactive)
 
         # Observation = concatenation of visible X (resources) and visible T_e (edge rates)
         #   X shape: (num_visible_nodes, num_resources)
@@ -159,14 +160,21 @@ class MachinationsEnv(gym.Env):
             truncated = False
             info: Dict[str, Any] = {"renderer": self._renderer} if self._renderer else {}
             return observation, reward, terminated, truncated, info
-        action = np.asarray(action, dtype=np.int8).flatten()
-        if action.shape[0] != self.n_interactive:
+        
+        # Convert discrete action to binary vector
+        action = int(action)
+        binary_action = np.zeros(self.n_interactive, dtype=np.int8)
+        for i in range(self.n_interactive):
+            if action & (1 << i):
+                binary_action[i] = 1
+        
+        if binary_action.shape[0] != self.n_interactive:
             raise ValueError(f"Action must have length {self.n_interactive}.")
 
         # Push action into the model via V_pending (fire on next tick)
         # Map binary action vector onto the full V_pending array
         self._model.V_pending[:] = False
-        for bit, node_id in zip(action, self._interactive_ids):
+        for bit, node_id in zip(binary_action, self._interactive_ids):
             if bit:
                 self._model.V_pending[node_id] = True
 
