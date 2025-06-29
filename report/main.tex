@@ -7,11 +7,24 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
 \usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
 \usepackage{textcomp}
 \usepackage{xcolor}
+
+\usepackage[brazil]{babel}
+\addto\captionsbrazil{%
+  \renewcommand\abstractname{Resumo }%
+  \renewcommand\IEEEkeywordsname{Palavras-chave }%
+}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
+
+\hypersetup{
+    colorlinks=false,
+    pdftitle={Sintetizando episódios de treino via abstração de jogos em aprendizado por reforço},
+    pdfpagemode=FullScreen,
+    }
 
 \title{Sintetizando episódios de treino via abstração de jogos em aprendizado por reforço}
 
@@ -24,13 +37,11 @@ marceloganem@dcc.ufmg.br}
 \maketitle
 
 \begin{abstract}
-This document is a model and instructions for \LaTeX.
-This and the IEEEtran.cls file define the components of your paper [title, text, heads, etc.]. *CRITICAL: Do Not Use Symbols, Special Characters, Footnotes, 
-or Math in Paper Title or Abstract.
+    \space Este trabalho propõe uma metodologia para sintetizar episódios de treino em aprendizado por reforço a partir de abstrações de jogos baseadas na sintaxe Machinations, traduzindo-as formalmente em Processos de Decisão de Markov (MDPs). Inicialmente, definimos nós, gatilhos, conexões de recursos e modificadores como componentes de um diagrama cuja ativação e transferência de recursos geram a dinâmica de transição de estados observáveis e parcialmente observáveis. Em seguida, modelamos dois jogos clássicos — Blackjack e Monopoly — sob essa representação simplificada, visando avaliar a viabilidade do método como pré-otimização de políticas. Experimentos de aprendizado por reforço foram executados para a modelagem de Monopoly: Deep Q-Networks (DQNs) não convergiram, enquanto agentes treinados com Proximal Policy Optimization (PPO), utilizando Generalized Advantage Estimation e função de objetivo com clipping, superaram a linha de base aleatória (sobrevivência média de 17,7 versus 14 turnos em um ambiente altamente estocástico) porém ainda apresentaram desempenho limitado em razão da alta estocasticidade e recompensas esparsas. Discutimos, por fim, as implicações para curriculum learning e as perspectivas de transferência do conhecimento adquirido no ambiente abstrato para implementações reais de jogos.
 \end{abstract}
 
 \begin{IEEEkeywords}
-    reinforcement learning, game modeling, board games, curriculum learning
+    \space reinforcement learning, game modeling, board games, curriculum learning
 \end{IEEEkeywords}
 
 \section{Introdução}
@@ -41,7 +52,7 @@ Especificamente no domínio de jogos (virtuais e de tabuleiro), um obstáculo fr
 
 Joris Dormans\cite{machinations} investiga a produção do chamado comportamento emergente em jogos, propondo uma sintaxe relativamente simples capaz de evidenciar os recursos e entidades centrais em um jogo, bem como as relações entre essas entidades. Assim, de acordo com Dormans, é possível rapidamente identificar ciclos de retroalimentação que ditam a economia geral de um jogo.
 
-Os diagramas construídos pela sintaxe proposta, enquanto conceitualmente sob domínio público, não estão mais publicamente disponíveis para teste e simulação -- a empresa Machinations SARL\footnote{\texttt{https://machinations.io/about}} atualmente oferece esse serviço de maneira privada a empresas de desenvolvimento e design de jogos. Ao longo da última década, publicações pontuais exploraram a aplicabilidade das proposições de Dormans no contexto de Inteligência Artificial.\footnote{\texttt{https://machinations.io/resources/academic-research-publications}}
+Os diagramas construídos pela sintaxe proposta, enquanto conceitualmente sob domínio público, não estão mais publicamente disponíveis para teste e simulação -- a empresa Machinations SARL\footnote{\url{https://machinations.io/about}} atualmente oferece esse serviço de maneira privada a empresas de desenvolvimento e design de jogos. Ao longo da última década, publicações pontuais exploraram a aplicabilidade das proposições de Dormans no contexto de Inteligência Artificial.\footnote{\url{https://machinations.io/resources/academic-research-publications}}
 
 
 \section{Objetivos}
@@ -79,7 +90,7 @@ Tadepalli et al. \cite{rrl} investigaram há mais de duas décadas a relevância
 A introdução de diagramas Machinations como um ambiente de treino pode ser vista como mais um caso da observação feita: primeiro, o agente é exposto a um ambiente que compreende estritamente os elementos centrais da economia de um jogo e que se comporta conforme as relações mais significativas entre eles. Observando o estado do diagrama, de dimensionalidade tipicamente inferior a representações reais (sobretudo de jogos virtuais), o aprendizado necessário é essencialmente da relação numérica entre as variáveis observadas -- e quais delas estão correlacionadas a recompensas positivas e negativas.
 
 \subsection{A modeling environment for reinforcement learning in games}
-"A modeling environment for reinforcement learnig in games" coincide com o presente trabalho na busca por uma solução genérica e explicável para a produção consistente e controlável de comportamentos artificialmente inteligentes. Gomes et al.\cite{modeling-rl-games} declaram um objetivo muito semelhante:
+"A modeling environment for reinforcement learning in games" coincide com o presente trabalho na busca por uma solução genérica e explicável para a produção consistente e controlável de comportamentos artificialmente inteligentes. Gomes et al.\cite{modeling-rl-games} declaram um objetivo muito semelhante:
 \begin{quote}
     Thus, AI4U was specifically refined to the preparation of reinforcement learning experiments in games. In general, the high-level goals of this environment are: to enable the reproducibility of methods and results; \textbf{to simplify the way of designing reinforcement learning algorithms in games;} and to enhance the readability of RL agents.
 \end{quote}
@@ -88,7 +99,7 @@ A solução apresentada pelos autores se centraliza na definição de uma ontolo
 
 \section{Metodologia}
 
-O problema proposto é abordado primeiro pela modelagem dos elementos e regras universais a todas as simulações simplificadas sob o prisma de um MDP. Então, modelamos os jogos Blackjack e Monopoly para verificar a capacidade do novo conjunto de definições básicas. Por fim, aplicamos Proximal Policy Optimization ao cenário simulado do Monopoly para verificar a capacidade de convergência do agente para a política ótima no cenário proposto.
+O problema proposto é abordado primeiro pela modelagem dos elementos e regras universais a todas as simulações simplificadas sob o prisma de um MDP. Então, modelamos os jogos Blackjack e Monopoly para verificar a capacidade do novo conjunto de definições básicas. Por fim, aplicamos Proximal Policy Optimization\cite{ppo} ao cenário simulado do Monopoly para verificar a capacidade de convergência do agente para a política ótima no cenário proposto.
 
 As dificuldades enfrentadas na parte de aprendizado, elaboradas na Seção \ref{results}, dificultam a extensão dos agentes treinados nas simulações para o problema real. Dedicamos este estudo, portanto, à investigação das propriedades dos diagramas implementados no contexto de aprendizado por reforço, bem como dos obstáculos encontrados.
 
@@ -97,7 +108,7 @@ As dificuldades enfrentadas na parte de aprendizado, elaboradas na Seção \ref{
 Definimos um diagrama como um conjunto $(V, E)$ de nós e conexões que possuem tipos, propriedades e estados específicos. Vale ressaltar que, formalmente, é incorreto classificar esse diagrama como um grafo dada a existência de arestas $e:(v\rightarrow e')$.
 
 \subsubsection{Nós}
-Seguindo a definição central da sintaxe Machinations, nós $v \in V$ possuem um estado correspondente $X_{v,r,t} \in \mathbb{R}$ que indica a quantidade de recursos do tipo $r$ no nó $v$ no instante $t$. Nós têm um de quatro modos de ativação:\footnote{Condensando a separação entre nós e gates originalmente definida por Dormans} passivo, automático, interativo ou não-determinístico. Inicialmente, nós podem ter atribuídos a si uma distibuição de valores a amostrar para cada tipo de recurso. Nesse caso, sempre que o nó $v$ é ativado, o estado $X_{v,r,t}$ é redefinido como uma amostra aleatória dentre os valores dessa distribuição -- que pode opcionalmente se esgotar ou ser infinita.
+Seguindo a definição central da sintaxe Machinations, nós $v \in V$ possuem um estado correspondente $X_{v,r,t} \in \mathbb{R}$ que indica a quantidade de recursos do tipo $r$ no nó $v$ no instante $t$. Nós têm um de quatro modos de ativação:\footnote{Condensando a separação entre nós e gates originalmente definida por Dormans} passivo, automático, interativo ou não-determinístico. Inicialmente, nós podem ter atribuídos a si uma distribuição de valores a amostrar para cada tipo de recurso. Nesse caso, sempre que o nó $v$ é ativado, o estado $X_{v,r,t}$ é redefinido como uma amostra aleatória dentre os valores dessa distribuição -- que pode opcionalmente se esgotar ou ser infinita.
 
 \subsubsection{Ativação}
 A ativação de nós é ditada pelo seu modo de ativação e pelos gatilhos $e \in E^G \subset E$ e ativadores $e \in E^A \subset E$ a eles direcionados. Especificamente, nós passivos só são ativados pela ação de gatilhos; nós automáticos são ativados a todo instante; nós interativos são ativados por ação do agente; nós não-determinísticos sobrescrevem seu estado por uma amostra aleatória a todo instante, mas não se ativam. Por fim, nenhum nó ou gatilho pode ser ativado caso o predicado $P_e$ de um ativador $e$ direcionado a ele seja falso.
@@ -170,10 +181,11 @@ Ativar a ação $\text{STAND}$ ($V_4$) ativa, portanto, a transferência do úni
 
 O nó que verifica a condição de vitória ($V_6$) semelhantemente tenta transferir $10$ em valor de cartas para os nós $V_0$ e $V_3$ -- mas as conexões de recursos são guardadas por ativadores que verificam tanto a quantidade de cartas (um às não pode levar o jogador a mais que $21$) quanto a existência de um recurso do tipo "Ace". As saídas do jogo são representadas pelos nós especiais "WIN", "TIE" e "LOSE", que terminam o episódio com recompensas correspondentes quando ativados.
 
-Observa-se que a representação de Blackjack a partir do conjunto de regras definidas é um tanto deselegante devido à intenção original que caracteriza a sintaxe Machinations: evidenciar comportamentos assintóticos ou padrões ao longo do tempo na economia de jogos. Sendo Blackjack um jogo com tipicamente menos de dez turnos, definidos por um conjunto de regras que é por si só mais simples que o diagrama construído, tentativas de aplicação de Deep Q-Networks e PPO foram extremamente inefetivas na modelagem proposta e não serão elaboradas na Seção \ref{learning}.
+Observa-se que a representação de Blackjack a partir do conjunto de regras definidas é um tanto deselegante devido à intenção original que caracteriza a sintaxe Machinations: evidenciar comportamentos assintóticos ou padrões ao longo do tempo na economia de jogos. Sendo Blackjack um jogo com tipicamente menos de dez turnos, definidos por um conjunto de regras que é por si só mais simples que o diagrama construído, tentativas de aplicação de DQNs\cite{dqn} e PPO foram extremamente inefetivas na modelagem proposta e não serão elaboradas na Seção \ref{learning}.
 
 
 \subsubsection{Monopoly}
+\label{modeling:monopoly}
 Ao simplificar o jogo Monopoly para aprendizado por reforço, visamos manter a representação do seu dilema central: o jogador deve investir para sobreviver a longo prazo, mas investir leva a uma posição vulnerável no curto prazo.
 
 Assim, o jogador, representado pelo nó $V_1$, se vê em um ambiente onde é necessário tomar a ação "BUY" em algum momento para evitar a terminação do jogo por "LOSE" antes do limite de 30 turnos -- quando a recompensa positiva é dada. Para comprar uma propriedade (equivalente a comprar quadrados do tabuleiro), o jogador precisa transferir $\$5$ para o nó "BUY". Em seguida, o modificador de "BUY" para $V_1$ conta cada $\$5$ em "BUY" como uma propriedade em $V_1$. Aqui, evidenciamos a capacidade da sintaxe implementada de representar uma lógica recorrente em jogos: a troca de um recurso por outro.
@@ -190,13 +202,11 @@ Esse cenário providencia um MDP altamente estocástico e um problema com claro 
 \label{learning}
 Definimos o problema de aprendizado na simulação de Monopoly definida como sobreviver até o instante $t=30$ em um ambiente que naturalmente leva o agente à falência. O perfil do ambiente apresentado é indiretamente ilustrado pelos resultados observados nas Figuras $?$ e $?$. Para aprendizado por reforço, é essencial analisar as características mais proeminentes do ambiente: especificamente, trabalhamos com episódios curtos, recompensas somente no fim do episódio e um ambiente altamente estocástico. Isto significa que ações do agente e, portanto, alterações na política, não têm consequências imediatamente evidentes no espaço de observação.
 
-A primeira tentativa de aprendizado foi feita com Deep Q-Networks. Mesmo com diferentes configurações de pesos de recompensa e hiperparâmetros, essa solução não foi capaz de convergir para uma política sequer aceitável no ambiente apresentado. Atribuímos esses resultados à dificuldade da estratégia central de Q-Learning, mesmo dadas as soluções adicionais em DQNs, perante um ambiente com alta variância, dificultando a avaliação correta das ações. Além disso, a presença de recompensas esparsas e dadas somente ao final providencia um sinal insuficiente para a otimização adequada, especialmente para a detecção de nuances para escapar de ótimos locais.
+A primeira tentativa de aprendizado foi feita com DQNs\cite{dqn}. Mesmo com diferentes configurações de pesos de recompensa e hiperparâmetros, essa solução não foi capaz de convergir para uma política sequer aceitável no ambiente apresentado. Atribuímos esses resultados à dificuldade da estratégia central de Q-Learning, mesmo dadas as soluções adicionais em DQNs, perante um ambiente com alta variância, dificultando a avaliação correta das ações. Além disso, a presença de recompensas esparsas e dadas somente ao final providencia um sinal insuficiente para a otimização adequada, especialmente para a detecção de nuances para escapar de ótimos locais.
 
 Minimizando a dependência de uma estimativa clara da função de valor, a estratégia de Proximal Policy Optimization\cite{ppo} é a alternativa mais promissora dados os obstáculos apresentados. Isso porque a adoção de Generalized Advantage Estimation possibilita a propagação de sinais de recompensa mais fracos (descontados e dados ao final do episódio) para que se tornem visíveis apesar do ruído introduzido pela estocasticidade. Além disso, o clipped-surrogate objective proposto por Schulman et al. (2017) permite um aprendizado um pouco mais estável comparado às DQNs por limitar atualizações drásticas à política.
 
 A Tabela \ref{tab:ppo_hyperparams} lista os hiperparâmetros empiricamente encontrados que produzem os melhores resultados, descritos na seção seguinte.
-
-\newpage
 
 \begin{table}[h!]
 \caption{Hiperparâmetros utilizados na aplicação de PPO ao ambiente que simula o jogo Monopoly}
@@ -233,7 +243,9 @@ Norma máxima do gradiente            & $1.0$             \\
 
 \section{Resultados}
 \label{results}
-aaa
+A amostragem de episódios produzidos pelos comportamentos de não-compra e compra aleatória com 50\% de chance revela o padrão esperado na construção do ambiente: o agente que nunca compra ações vive, em média, 10.5 episódios do máximo de 30 conforme ilustrado na Figura \ref{fig:ep_lens_control_0}. O agente de ação aleatória tem uma performance um pouco melhor, sobrevivendo em média 14 episódios (vide Figura \ref{fig:ep_lens_control}), e consegue em múltiplos casos sobreviver até o trigésimo episódio. 
+
+Dados os valores esperados do ambiente definido na Subseção \ref{modeling:monopoly}, sobreviver até o episódio final é tipicamente um indicativo de que o agente comprou pelo menos alguma propriedade tal que a variação esperada no seu saldo total seja positiva ao longo do tempo. Nesse caso, isso quer dizer que o agente sobreviveria para sempre na simulação apresentada.
 
 \begin{figure}[htpb]
     \centering
@@ -260,13 +272,33 @@ aaa
     \centering
     \includegraphics[width=1\linewidth]{figures/eval_progress.png}
     \caption{Progresso do treinamento do agente, medido pelo tempo de sobrevivência médio ao longo de 100 episódios de avaliação, executados a cada 2.500 etapas do treinmanto.}
-    \label{fig:ep_lens_control}
+    \label{fig:eval_progress}
 \end{figure}
+
+O agente obtido a partir do treino via PPO por 200.000 etapas considerando os hiperparâmetros na Tabela \ref{tab:ppo_hyperparams} performa levemente melhor que o agente aleatório, sobrevivendo uma média de 17.7 dos 30 episódios máximos e atingindo o episódio final mais frequentemente, conforme ilustrado pela Figura \ref{fig:ep_lens_control}. De fato, uma sobrevivência média de $+3.3$ turnos é suficiente para que o agente treinado por PPO vença frequentemente agentes aleatórios no cenário multijogador.
+
+Observa-se a variância do ambiente pelas linhas azuis em todas as figuras dispostas nessa subseção -- além do ruído induzido pela estocasticidade, um padrão interessante se torna evidente: a frequência de "sucesso" de cada agente conforme os critérios definidos. Portanto, constatamos que o agente obtido supera a baseline aleatória, mas não é particularmente efetivo em capturar os padrões do ambiente. Especificamente, é comum que o agente ainda compre propriedades mesmo com baixo capital, levando a terminações prematuras mais frequentes que o caso ótimo.
+
+Por meio dessa demonstração de caso, desde a construção do diagrama que representa um jogo até a aplicação efetiva de uma solução de aprendizado por reforço, validamos a hipótese de que é possível obter uma representação coerente às definições de um MDP e viável no quesito de aprendizado, mesmo quando altamente simplificada e estocástica. Entretanto, é necessário investigar a capacidade de transferência do caso simplificado para o caso geral, bem como planejar cuidadosamente a arquitetura e definições formais capazes de interceder os jogos modelados com suas implementações reais -- assim, a Seção \ref{future-work} define a direção dessa investigação como a segunda parte da presente Monografia em Sistemas de Informação.
 
 \section{Considerações}
 
-\section{Trabalhos futuros}
+\subsection{Da qualidade das modelagens}
+A construção de um conjunto de regras formais a partir da sintaxe proposta por Joris Dormans em Engineering Emergence é definitivamente a tarefa mais complexa e impactante para as demais etapas do trabalho. A busca por uma transcrição suportada pelo arcabouço de aprendizado por reforço mas ainda fiel ao trabalho original implicou em algumas concessões que significam que a sintaxe aqui implementada não é exatamente equivalente à do trabalho de referência. Esse é o caso para a maioria dos trabalhos na literatura de ciência da computação que visam implementar de maneira exata as definições um tanto descritivas da obra original\footnote{Vide \url{https://machinations.io/resources/academic-research-publications}}.
 
+\subsection{Da estocasticidade dos ambientes}
+A proposta de um diagrama Machinations é abstrair via relações lógicas e probabilidades comportamentos de um jogo definidos por um conjunto maior de regras mais complexas. Assim, o sinal recebido pelo agente, além de ser uma observação parcial do estado pela natureza dos jogos, é também parcial com relação à implementação completa do jogo. No caso do jogo Monopoly, por exemplo, abstrair todas as transações negativas para o jogador no pagamento periódico de aluguel não permite uma otimização convexa com relação às mecânicas originais que contemplam elementos como construções em cada quadrado do tabuleiro, o quadrado "JAIL", impostos, etc.
+
+Entretanto, essa abstração naturalmente produz ambientes com sinais de gradiente mais ruidosos e de difícil identificação. Assim, somente as relações mais verdadeiramente explícitas são facilmente capturadas -- a depender do esquema de recompensas definido. Entretanto, relações sutis entre as features observadas e comportamentos mais complexos não têm espaço para se desenvolver em meio a um sinal de recompensa pouco evidente.
+
+\section{Trabalhos futuros}
+\label{future-work}
+A direção natural para trabalhos futuros a partir da modelagem aqui definida é a tentativa de transferir o aprendizado advindo da simulação para o problema real no paradigma de curriculum learning\cite{curriculum}. Essa ideia induz, naturalmente, a hipótese de que a apresentação de diagramas cada vez mais complexos para o agente permite uma melhor aproximação para o problema -- que também merece investigação.
+
+Ainda, é possível utilizar soluções model-based,  incluindo soluções mais tradicionais como Monte Carlo com aproximação de funções, para problemas curtos e estocásticos como Blackjack e Monopoly. Supõe-se que seja possível inferir uma função de transição aprimorada com comparação a um início aleatório, onde a complexidade do ambiente verdadeiro pode dificultar a identificação dos componentes-chave -- nesse caso, a modelagem cumpriria o papel de uma fase de "exploring starts" direcionada.
+
+\vfill
+\small O código implementado, as animações dos diagramas, os gráficos produzidos e os checkpoints dos modelos treinados estão disponíveis em \url{https://github.com/masganem/msi}. 
 \newpage
 \bibliographystyle{IEEEtran}
 \bibliography{references}
