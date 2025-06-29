@@ -41,7 +41,7 @@ Especificamente no domínio de jogos (virtuais e de tabuleiro), um obstáculo fr
 
 Joris Dormans\cite{machinations} investiga a produção do chamado comportamento emergente em jogos, propondo uma sintaxe relativamente simples capaz de evidenciar os recursos e entidades centrais em um jogo, bem como as relações entre essas entidades. Assim, de acordo com Dormans, é possível rapidamente identificar ciclos de retroalimentação que ditam a economia geral de um jogo.
 
-Os diagramas construídos pela sintaxe proposta, enquanto conceitualmente sob domínio público, não estão mais publicamente disponíveis para teste e simulação -- a empresa Machinations SARL\footnote{Link about} atualmente oferece esse serviço de maneira privada a empresas de desenvolvimento e design de jogos. Ao longo da última década, publicações pontuais exploraram a aplicabilidade das proposições de Dormans no contexto de computação.\footnote{Outro link publications}
+Os diagramas construídos pela sintaxe proposta, enquanto conceitualmente sob domínio público, não estão mais publicamente disponíveis para teste e simulação -- a empresa Machinations SARL\footnote{\texttt{https://machinations.io/about}} atualmente oferece esse serviço de maneira privada a empresas de desenvolvimento e design de jogos. Ao longo da última década, publicações pontuais exploraram a aplicabilidade das proposições de Dormans no contexto de Inteligência Artificial.\footnote{\texttt{https://machinations.io/resources/academic-research-publications}}
 
 
 \section{Objetivos}
@@ -60,7 +60,7 @@ O elemento central do trabalho "\textit{Engineering Emergence: Applied Theory fo
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.9\linewidth]{figures/monopoly.png}
-    \caption{Representação do jogo \textit{Monopoly} sob a sintaxe \textit{Machinations}}.
+    \caption{Representação do jogo \textit{Monopoly} sob a sintaxe \textit{Machinations}.}.
     \label{fig:monopoly}
 \end{figure}
 
@@ -94,298 +94,180 @@ As dificuldades enfrentadas na parte de aprendizado, elaboradas na Seção \ref{
 
 \subsection{Modelagem}
 \label{modeling}
-Machinations
+Definimos um diagrama como um conjunto $(V, E)$ de nós e conexões que possuem tipos, propriedades e estados específicos. Vale ressaltar que, formalmente, é incorreto classificar esse diagrama como um grafo dada a existência de arestas $e:(v\rightarrow e')$.
 
-\subsubsection{Ações}
+\subsubsection{Nós}
+Seguindo a definição central da sintaxe Machinations, nós $v \in V$ possuem um estado correspondente $X_{v,r,t} \in \mathbb{R}$ que indica a quantidade de recursos do tipo $r$ no nó $v$ no instante $t$. Nós têm um de quatro modos de ativação:\footnote{Condensando a separação entre nós e gates originalmente definida por Dormans} passivo, automático, interativo ou não-determinístico. Inicialmente, nós podem ter atribuídos a si uma distibuição de valores a amostrar para cada tipo de recurso. Nesse caso, sempre que o nó $v$ é ativado, o estado $X_{v,r,t}$ é redefinido como uma amostra aleatória dentre os valores dessa distribuição -- que pode opcionalmente se esgotar ou ser infinita.
 
-Powerset of nodes
+\subsubsection{Ativação}
+A ativação de nós é ditada pelo seu modo de ativação e pelos gatilhos $e \in E^G \subset E$ e ativadores $e \in E^A \subset E$ a eles direcionados. Especificamente, nós passivos só são ativados pela ação de gatilhos; nós automáticos são ativados a todo instante; nós interativos são ativados por ação do agente; nós não-determinísticos sobrescrevem seu estado por uma amostra aleatória a todo instante, mas não se ativam. Por fim, nenhum nó ou gatilho pode ser ativado caso o predicado $P_e$ de um ativador $e$ direcionado a ele seja falso.
+
+\subsubsection{Condições}
+No contexto destas simulações, predicados representam condições matemáticas simples em função do nó de origem de uma aresta que podem bloquear com precedência absoluta a ativação do alvo (ou da própria conexão, no caso de gatilhos).
+
+Gatilhos podem ser passivos, ativando-se somente a partir da ativação do nó de onde saem, ou automáticos, ativando-se sempre que seu predicado $P_e$ estiver ativo. Um gatilho passivo que possui um predicado se ativa somente quando seu predicado está ativo.
+
+\subsubsection{Transferência de recursos}
+A ativação de um nó têm, portanto, duas consequências: a ativação dos gatilhos e de todas as conexões de recursos saindo de si. Uma conexão de recurso $e \in E^R \subset E$ transfere $T_{e,t}$ recursos do tipo $\tau_e \in R$ do seu nó de origem para o nó alvo quando ativada -- seguindo as mesmas regras que nós seguem para gatilhos e ativadores. Aqui, $R$ representa o conjunto de todos os tipos de recursos existentes no diagrama.
+
+Modificadores são os elementos responsáveis pela construção de padrões assintóticos na economia dos recursos entre os nós. Um modificador $e \in E^M$ tem como alvo um nó ou conexão de recurso que, a todo instante $t$, tem a taxa $\dot{T}_e$  multiplicada pelo estado $X_{v,\tau_{\text{(SRC)}e},t}$ do nó de origem adicionada ao seu estado $X_{v,\tau_{\text{(DST)}e},t}$, no caso de um alvo $v \in V$, ou simplesmente $T_{e'}$, no caso de um alvo $e' \in E^R$. Vale notar que a taxa de modificadores é estática e, portanto, não subscrita pelo indicador de tempo.
+
+\subsection{Ações}
+
+Definimos as ações do MDP construído como o conjunto potência dos nós interativos. Essa definição é consistente com as regras para nós interativos propostas por Dormans: um agente é capaz de tomar entre cada uma e nenhuma das ações disponibilizadas pelos nós interativos do diagrama. Sendo $V^I \subset V$ o conjunto dos nós interativos, temos:
 
 $$
-aaaaa
+\mathbf{A} = \mathcal{P}(V^I)
 $$
 
-\subsubsection{Estados}
+\subsection{Estados}
 
-Estados dos nos e conexoes de recursos
-Subconjunto dos estados visiveis
+O estado é composto por quaisquer elementos do diagrama que mudem ao longo do tempo. Observa-se, evidentemente, que essa representação é insuficiente para treinar agentes capazes de lidar com diferentes diagramas. Limitamo-nos aqui ao treino de um agente que busca aprender uma representação fixa de um único jogo.
 
-\subsubsection{Dinâmica}
+Ainda, nem todos os aspectos da economia de um jogo são visíveis ou relevantes para o aprendizado. Temos, na verdade, um MDP parcialmente observável -- para isso, definimos subconjuntos $X^O$ e $T^O$ correspondentes aos nós e conexões de recursos observáveis tal que um estado $S_t \in \mathbf{S}$ tem a forma:
 
-literalmente as regras do bagui
+$$
+S_t = \{X^O_t, T^O_t\}
+$$
 
-\subsubsection{Recompensas}
+\subsection{Dinâmica}
 
-Pesos para cada um dos elementos observáveis, +1 quando ganha, só conta pesos negativos quando perde.
+A dinâmica que determina $P(S_{t+1}|S_t, A_t)$ não é explicitamente modelada, mas definida justamente pelas regras extensivamente descritas na Subseção \ref{modeling}. Nesse caso, soluções de aprendizado por reforço que sejam model-based, i.e., que objetivem estimar a função de transição, aprenderiam justamente uma representação probabilística da dinâmica determinada pelo diagrama. Aqui, investigamos apenas soluções model-free, como descrito na Subseção \ref{learning}.
+
+\subsection{Recompensas}
+Considerando a diversidade de critérios de sucesso em jogos, visando um esquema de recompensas agnóstico a diagramas específicos, definimos pesos $\omega$ e $\rho$ para cada elemento de $X$ e $T$, respectivamente. Seguindo o princípio de \textit{potential-based shaping}\cite{potential-rl}, temos:
+
+\begin{align*}
+    \Phi(s) &= \sum_{v\in V^{\Phi}}\sum_{r \in R^{\Phi}}\omega_{v,r}\,X_{v,r}\\
+          &\ \ \ \ +\;\sum_{e\in E^{R^{\Phi}}}\rho_{e}\,T_{e},\\
+    \mathbf{R}(s,a,s') &= \Phi(s') \;-\; \Phi(s).
+\end{align*}
+
+\begin{figure*}[h!]
+    \centering
+    \includegraphics[width=1.2\linewidth]{figures/Blackjack.png}
+    \caption{Representação do jogo \textit{Blackjack} sob a sintaxe implementada.}
+    \label{fig:blackjack}
+\end{figure*}
+
+Assim, para cada especificação de diagrama Machinations, pode-se definir também os critérios específicos de recompensa conforme cada um dos nós. Ainda, a definição da função de potencial $\Phi$ facilita a extensão do esquema de recompensas conforme novos critérios.
+
+Adicionalmente, além de pesos para cada um dos elementos observáveis, o agente recebe uma recompensa de $+1$ ao atingir uma condição de vitória pré-estabelecida (representada pelo nó $\text{WIN}$), mas só recebe recompensas cujos pesos são negativos quando perde (ativando o nó $\text{LOSE}$), além da recompensa de $-1$.
 
 \subsection{Jogos modelados}
-bla bla bla geral \footnote{Explicando porque nao estamos indo com o Catan...}
+A fim de verificar a aplicabilidade e coerência das regras aqui redefinidas, modelamos os jogos Blackjack e Monopoly -- sendo o último o jogo no qual vamos testar a aplicabilidade do aprendizado. Isso se deve ao fato do Monopoly ser o jogo mais explicitamente definido no trabalho de referência\cite{machinations}, ser facilmente representável e permitir expectativas claras com relação à política ótima.
 \subsubsection{Blackjack}
+A Figura \ref{fig:blackjack} ilustra uma representação do jogo Blackjack a partir das regras implementadas. Aqui, o jogador (representado pelo nó $V_0$) recebe cartas do baralho ($V_1$) amostradas pelo modo de ativação não-determinístico a todo instante $t$. Essa transferência só ocorre, entretanto, quando o jogador possui um recurso do tipo turno -- verificação representada pelo predicado $P_{E_8}$, representado na figura como $(= 1)$.
+
+\begin{figure*}[h!]
+    \centering
+    \includegraphics[width=1.2\linewidth]{figures/Monopoly.png}
+    \caption{Representação do jogo \textit{Monopoly} sob a sintaxe implementada.}
+    \label{fig:my-monopoly}
+\end{figure*}
+
+Ativar a ação $\text{STAND}$ ($V_4$) ativa, portanto, a transferência do único recurso turno do jogador para o dealer -- que, por uma lógica equivalente, recebe cartas do baralho a cada turno. O caso especial de cartas do tipo às, que contam 1 ou 11 no cenário de Blackjack conforme a vantagem do jogador ou dealer, é implementado pelo nó $V_2$. Sempre que o baralho ($V_1$) amostra uma carta, caso seu valor seja 1, $(P_{E_2})$, o gatilho $E_2$ ativa $V_2$, que tenta ativar as transferências $E_3$ e $E_7$ de um recurso do tipo "Ace" -- guardadas por ativadores que verificam se $V_0$ ou $V_3$ têm o turno.
+
+O nó que verifica a condição de vitória ($V_6$) semelhantemente tenta transferir $10$ em valor de cartas para os nós $V_0$ e $V_3$ -- mas as conexões de recursos são guardadas por ativadores que verificam tanto a quantidade de cartas (um às não pode levar o jogador a mais que $21$) quanto a existência de um recurso do tipo "Ace". As saídas do jogo são representadas pelos nós especiais "WIN", "TIE" e "LOSE", que terminam o episódio com recompensas correspondentes quando ativados.
+
+Observa-se que a representação de Blackjack a partir do conjunto de regras definidas é um tanto deselegante devido à intenção original que caracteriza a sintaxe Machinations: evidenciar comportamentos assintóticos ou padrões ao longo do tempo na economia de jogos. Sendo Blackjack um jogo com tipicamente menos de dez turnos, definidos por um conjunto de regras que é por si só mais simples que o diagrama construído, tentativas de aplicação de Deep Q-Networks e PPO foram extremamente inefetivas na modelagem proposta e não serão elaboradas na Seção \ref{learning}.
+
+
 \subsubsection{Monopoly}
-This environment should produce the classic monopoly dilemma: "I need to invest to survive long-term, but investing makes me vulnerable short-term"
+Ao simplificar o jogo Monopoly para aprendizado por reforço, visamos manter a representação do seu dilema central: o jogador deve investir para sobreviver a longo prazo, mas investir leva a uma posição vulnerável no curto prazo.
 
+Assim, o jogador, representado pelo nó $V_1$, se vê em um ambiente onde é necessário tomar a ação "BUY" em algum momento para evitar a terminação do jogo por "LOSE" antes do limite de 30 turnos -- quando a recompensa positiva é dada. Para comprar uma propriedade (equivalente a comprar quadrados do tabuleiro), o jogador precisa transferir $\$5$ para o nó "BUY". Em seguida, o modificador de "BUY" para $V_1$ conta cada $\$5$ em "BUY" como uma propriedade em $V_1$. Aqui, evidenciamos a capacidade da sintaxe implementada de representar uma lógica recorrente em jogos: a troca de um recurso por outro.
 
-Monopoly é o jogo no qual vamos testar a aplicabilidade de RL (por ser o mais explicitamente definido no trabalho de referência, além de que são problemas completamente diferentes com técnicas de aprendizado completamente diferentes... melhor se dedicar a explorar um só). Além disso, o blackjack acaba tendo o diagrama mais complexo que a modelagem.
+A necessidade da compra de propriedades nesse cenário é dada pela mecânica de recebimento e pagamento de aluguel ao nó $V_3$, que representa (em uma abstração significativa) os demais jogadores. A cada turno, os nós $V_6$ e $V_8$ amostram valores aleatórios de $1$ a $40$ para seus estados, que são avaliados contra os predicados $P_{E_4} = (\leq 28)$ e $P_{E_{10}} = (\leq 14)$ para automaticamente ativar as conexões $E_2$ e $E_8$, respectivamente, com alguma chance a cada turno. O valor do aluguel pago pelo jogador via $E_2$ é determinado pelo valor aleatoriamente amostrado de $V_7$ dentre a distribuição $\{2, 4, 6, 10, 10, 12, 12, 15, 15\}$, abstraindo a variedade de eventos que podem causar transações negativas no saldo monetário do jogador.
+
+A estratégia principal do jogo, por fim, é permitida pela ação dos modificadores $E_9$ e $E_{11}$, que aumentam a probabilidade de receber aluguel em $\frac{1}{40}$ e o valor recebido em $4$, respectivamente, para cada propriedade possuída por $V_1$. Adicionalmente, a mecânica do quadrado "GO" no mapa do jogo original é implementada por $V_2$, que, com probabilidade $\frac{7}{40}$, estimula a economia do jogo transferindo $\$5$ para o jogador.
+
+Nesse cenário, como evidenciado na Seção \ref{results}, o $\Delta X_{V_1,R_0}$ (sendo $R_0$ o recurso que representa capital) esperado para cada turno dados os valores e probabilidades descritos é negativo -- em outras palavras, o agente se vê obrigado a decidir entre comprometer seu valor monetário e arriscar ir à falência por um aluguel muito alto no turno seguinte ou não comprar propriedades e ter uma alta probabilidade de ir à falência no longo prazo.
+
+Esse cenário providencia um MDP altamente estocástico e um problema com claro comportamento ótimo (comprar o máximo de propriedades mantendo uma reserva segura de capital e agir conservadoramente daí para frente). Temos, assim, um exemplo suficientemente representativo das regras aqui descritas e implementadas para a validação contra técnicas de aprendizado por reforço.
 
 \subsection{Aprendizado}
-DQN -> por quê? 
-Quais parâmetros? Quantos episódios?
-\begin{quote}
-    \small
-    \color{blue}
-    learning rate=0.0005,            (Reduced from 1e-3 for stability)
-    buffer size=100000,              (Increased from 50000 for better experience replay)
-    learning starts=5000,            (Reduced from 10000 for faster learning with short episodes)
-    batch size=256,                  (Increased from 64 for smoother gradient updates)
-    gamma=0.95,                      (Reduced from 0.99 for shorter episode focus)
-    train freq=1,                    (Increased from 4 for more frequent updates)
-    gradient steps=1,
-    target update interval=5000,     (Increased from 1000 to prevent instability)
-    exploration fraction=0.3,        (Reduced from 0.5 for faster convergence)
-    exploration initial eps=1.0,
-    exploration final eps=0.05,      (Increased from 0.01 to maintain exploration)
-\end{quote}
-Spoiler: DQN Falhou... falar mais em resultados.
+\label{learning}
+Definimos o problema de aprendizado na simulação de Monopoly definida como sobreviver até o instante $t=30$ em um ambiente que naturalmente leva o agente à falência. O perfil do ambiente apresentado é indiretamente ilustrado pelos resultados observados nas Figuras $?$ e $?$. Para aprendizado por reforço, é essencial analisar as características mais proeminentes do ambiente: especificamente, trabalhamos com episódios curtos, recompensas somente no fim do episódio e um ambiente altamente estocástico. Isto significa que ações do agente e, portanto, alterações na política, não têm consequências imediatamente evidentes no espaço de observação.
+
+A primeira tentativa de aprendizado foi feita com Deep Q-Networks. Mesmo com diferentes configurações de pesos de recompensa e hiperparâmetros, essa solução não foi capaz de convergir para uma política sequer aceitável no ambiente apresentado. Atribuímos esses resultados à dificuldade da estratégia central de Q-Learning, mesmo dadas as soluções adicionais em DQNs, perante um ambiente com alta variância, dificultando a avaliação correta das ações. Além disso, a presença de recompensas esparsas e dadas somente ao final providencia um sinal insuficiente para a otimização adequada, especialmente para a detecção de nuances para escapar de ótimos locais.
+
+Minimizando a dependência de uma estimativa clara da função de valor, a estratégia de Proximal Policy Optimization\cite{ppo} é a alternativa mais promissora dados os obstáculos apresentados. Isso porque a adoção de Generalized Advantage Estimation possibilita a propagação de sinais de recompensa mais fracos (descontados e dados ao final do episódio) para que se tornem visíveis apesar do ruído introduzido pela estocasticidade. Além disso, o clipped-surrogate objective proposto por Schulman et al. (2017) permite um aprendizado um pouco mais estável comparado às DQNs por limitar atualizações drásticas à política.
+
+A Tabela \ref{tab:ppo_hyperparams} lista os hiperparâmetros empiricamente encontrados que produzem os melhores resultados, descritos na seção seguinte.
+
+\newpage
+
+\begin{table}[h!]
+\caption{Hiperparâmetros utilizados na aplicação de PPO ao ambiente que simula o jogo Monopoly}
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Hiperparâmetro}              & \textbf{Valor}    \\
+\hline
+Taxa de aprendizado                  & $5\times10^{-4}$  \\
+\hline
+Fator de desconto                    & $0.98$            \\
+\hline
+Suavização GAE                       & $0.95$            \\
+\hline
+Comprimento do rollout               & $4096$            \\
+\hline
+Tamanho do batch                     & $128$             \\
+\hline
+Épocas por atualização               & $15$              \\
+\hline
+Intervalo de clipping                & $0.3$             \\
+\hline
+Coeficiente de entropia              & $0.05$            \\
+\hline
+Coeficiente de perda de valor        & $0.5$             \\
+\hline
+Norma máxima do gradiente            & $1.0$             \\
+\hline
+\end{tabular}
+\label{tab:ppo_hyperparams}
+\end{center}
+\end{table}
+
 
 \section{Resultados}
 \label{results}
-DQN falhou por uma pá de coisa:
+aaa
 
-\begin{quote}
-    \small
-    \color{blue}
-    DQNs are fundamentally ill-suited for this highly stochastic monopoly environment. Here's why:
-    Core Stochastic Challenges
-    70\% chance to pay rent each step (pay rent odds: luck ≤ 28 out of 40)
-    25x rent variance (\$2-50 from rent values array)
-    17.5\% chance of income (pass go odds: luck ≤ 7 out of 40)
-    35\% chance of rent income (get rent odds: luck ≤ 14 out of 40)
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/episode_lengths_control_0.png}
+    \caption{Duração do episódio para 1000 episódios executados com um agente que nunca compra propriedades.}
+    \label{fig:ep_lens_control_0}
+\end{figure}
 
-    Why DQNs Fail Here
-    1. High Variance Breaks Q-Learning
-    DQNs learn expected Q-values, but with 25x rent variance, the same state-action pair can yield vastly different outcomes
-    A "good" action (buying estates) can still lead to immediate bankruptcy due to bad luck
-    Q-values become unreliable when signal-to-noise ratio is this poor
-    2. Sparse Binary Rewards
-    The environment gives mostly -1 (bankruptcy) or +1 (survival) with little intermediate feedback
-    DQNs need dense reward signals to understand which actions contribute to success
-    With binary outcomes, it's nearly impossible to distinguish good vs bad actions from limited samples
-    3. Stochastic Transitions Violate DQN Assumptions
-    DQNs assume actions have somewhat predictable consequences
-    Here, even optimal actions can fail due to multiple layers of randomness
-    The Markov property is weakened when outcomes depend heavily on unobservable luck
-    4. Sample Inefficiency
-    Your evaluation shows mean episode length of only 8.9 steps before bankruptcy
-    DQNs need thousands of episodes, but short episodes provide minimal learning signal
-    Most episodes end the same way (bankrupt) regardless of strategy
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/episode_lengths_control.png}
+    \caption{Duração do episódio para 1000 episódios executados com um agente de escolha aleatória.}
+    \label{fig:ep_lens_control}
+\end{figure}
 
-\end{quote}
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/episode_lengths_ppo.png}
+    \caption{Duração do episódio para 1000 episódios executados com um agente treinado por PPO durante 200.000 episódios.}
+    \label{fig:ep_lens_control}
+\end{figure}
 
-Pra um jogo o trabalho de referência não serve devido a problemas de desambiguação temporal. Além disso, a gente vê que a modelagem em si acaba sendo mais complexa que o próprio jogo. no outro o agente converge pra um ótimo local de sempre comprar.
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/eval_progress.png}
+    \caption{Progresso do treinamento do agente, medido pelo tempo de sobrevivência médio ao longo de 100 episódios de avaliação, executados a cada 2.500 etapas do treinmanto.}
+    \label{fig:ep_lens_control}
+\end{figure}
 
 \section{Considerações}
 
 \section{Trabalhos futuros}
 
-
 \newpage
-
-\section{Introduction}
-This document is a model and instructions for \LaTeX.
-Please observe the conference page limits. For more information about how to become an IEEE Conference author or how to write your paper, please visit   IEEE Conference Author Center website: https://conferences.ieeeauthorcenter.ieee.org/.
-
-\subsection{Maintaining the Integrity of the Specifications}
-
-The IEEEtran class file is used to format your paper and style the text. All margins, 
-column widths, line spaces, and text fonts are prescribed; please do not 
-alter them. You may note peculiarities. For example, the head margin
-measures proportionately more than is customary. This measurement 
-and others are deliberate, using specifications that anticipate your paper 
-as one part of the entire proceedings, and not as an independent document. 
-Please do not revise any of the current designations.
-
-\section{Prepare Your Paper Before Styling}
-Before you begin to format your paper, first write and save the content as a 
-separate text file. Complete all content and organizational editing before 
-formatting. Please note sections \ref{AA} to \ref{FAT} below for more information on 
-proofreading, spelling and grammar.
-
-Keep your text and graphic files separate until after the text has been 
-formatted and styled. Do not number text heads---{\LaTeX} will do that 
-for you.
-
-\subsection{Abbreviations and Acronyms}\label{AA}
-Define abbreviations and acronyms the first time they are used in the text, 
-even after they have been defined in the abstract. Abbreviations such as 
-IEEE, SI, MKS, CGS, ac, dc, and rms do not have to be defined. Do not use 
-abbreviations in the title or heads unless they are unavoidable.
-
-\subsection{Units}
-\begin{itemize}
-\item Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as ``3.5-inch disk drive''.
-\item Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
-\item Do not mix complete spellings and abbreviations of units: ``Wb/m\textsuperscript{2}'' or ``webers per square meter'', not ``webers/m\textsuperscript{2}''. Spell out units when they appear in text: ``. . . a few henries'', not ``. . . a few H''.
-\item Use a zero before decimal points: ``0.25'', not ``.25''. Use ``cm\textsuperscript{3}'', not ``cc''.)
-\end{itemize}
-
-\subsection{Equations}
-Number equations consecutively. To make your 
-equations more compact, you may use the solidus (~/~), the exp function, or 
-appropriate exponents. Italicize Roman symbols for quantities and variables, 
-but not Greek symbols. Use a long dash rather than a hyphen for a minus 
-sign. Punctuate equations with commas or periods when they are part of a 
-sentence, as in:
-\begin{equation}
-a+b=\gamma\label{eq}
-\end{equation}
-
-Be sure that the 
-symbols in your equation have been defined before or immediately following 
-the equation. Use ``\eqref{eq}'', not ``Eq.~\eqref{eq}'' or ``equation \eqref{eq}'', except at 
-the beginning of a sentence: ``Equation \eqref{eq} is . . .''
-
-\subsection{\LaTeX-Specific Advice}
-
-Please use ``soft'' (e.g., \verb|\eqref{Eq}|) cross references instead
-of ``hard'' references (e.g., \verb|(1)|). That will make it possible
-to combine sections, add equations, or change the order of figures or
-citations without having to go through the file line by line.
-
-Please don't use the \verb|{eqnarray}| equation environment. Use
-\verb|{align}| or \verb|{IEEEeqnarray}| instead. The \verb|{eqnarray}|
-environment leaves unsightly spaces around relation symbols.
-
-Please note that the \verb|{subequations}| environment in {\LaTeX}
-will increment the main equation counter even when there are no
-equation numbers displayed. If you forget that, you might write an
-article in which the equation numbers skip from (17) to (20), causing
-the copy editors to wonder if you've discovered a new method of
-counting.
-
-{\BibTeX} does not work by magic. It doesn't get the bibliographic
-data from thin air but from .bib files. If you use {\BibTeX} to produce a
-bibliography you must send the .bib files. 
-
-{\LaTeX} can't read your mind. If you assign the same label to a
-subsubsection and a table, you might find that Table I has been cross
-referenced as Table IV-B3. 
-
-{\LaTeX} does not have precognitive abilities. If you put a
-\verb|\label| command before the command that updates the counter it's
-supposed to be using, the label will pick up the last counter to be
-cross referenced instead. In particular, a \verb|\label| command
-should not go before the caption of a figure or a table.
-
-Do not use \verb|\nonumber| inside the \verb|{array}| environment. It
-will not stop equation numbers inside \verb|{array}| (there won't be
-any anyway) and it might stop a wanted equation number in the
-surrounding equation.
-
-\subsection{Some Common Mistakes}\label{SCM}
-\begin{itemize}
-\item The word ``data'' is plural, not singular.
-\item The subscript for the permeability of vacuum $\mu_{0}$, and other common scientific constants, is zero with subscript formatting, not a lowercase letter ``o''.
-\item In American English, commas, semicolons, periods, question and exclamation marks are located within quotation marks only when a complete thought or name is cited, such as a title or full quotation. When quotation marks are used, instead of a bold or italic typeface, to highlight a word or phrase, punctuation should appear outside of the quotation marks. A parenthetical phrase or statement at the end of a sentence is punctuated outside of the closing parenthesis (like this). (A parenthetical sentence is punctuated within the parentheses.)
-\item A graph within a graph is an ``inset'', not an ``insert''. The word alternatively is preferred to the word ``alternately'' (unless you really mean something that alternates).
-\item Do not use the word ``essentially'' to mean ``approximately'' or ``effectively''.
-\item In your paper title, if the words ``that uses'' can accurately replace the word ``using'', capitalize the ``u''; if not, keep using lower-cased.
-\item Be aware of the different meanings of the homophones ``affect'' and ``effect'', ``complement'' and ``compliment'', ``discreet'' and ``discrete'', ``principal'' and ``principle''.
-\item Do not confuse ``imply'' and ``infer''.
-\item The prefix ``non'' is not a word; it should be joined to the word it modifies, usually without a hyphen.
-\item There is no period after the ``et'' in the Latin abbreviation ``et al.''.
-\item The abbreviation ``i.e.'' means ``that is'', and the abbreviation ``e.g.'' means ``for example''.
-\end{itemize}
-
-\subsection{Authors and Affiliations}\label{AAA}
-\textbf{The class file is designed for, but not limited to, six authors.} A 
-minimum of one author is required for all conference articles. Author names 
-should be listed starting from left to right and then moving down to the 
-next line. This is the author sequence that will be used in future citations 
-and by indexing services. Names should not be listed in columns nor group by 
-affiliation. Please keep your affiliations as succinct as possible (for 
-example, do not differentiate among departments of the same organization).
-
-\subsection{Identify the Headings}\label{ITH}
-Headings, or heads, are organizational devices that guide the reader through 
-your paper. There are two types: component heads and text heads.
-
-Component heads identify the different components of your paper and are not 
-topically subordinate to each other. Examples include Acknowledgments and 
-References and, for these, the correct style to use is ``Heading 5''. Use 
-``figure caption'' for your Figure captions, and ``table head'' for your 
-table title. Run-in heads, such as ``Abstract'', will require you to apply a 
-style (in this case, italic) in addition to the style provided by the drop 
-down menu to differentiate the head from the text.
-
-Text heads organize the topics on a relational, hierarchical basis. For 
-example, the paper title is the primary text head because all subsequent 
-material relates and elaborates on this one topic. If there are two or more 
-sub-topics, the next level head (uppercase Roman numerals) should be used 
-and, conversely, if there are not at least two sub-topics, then no subheads 
-should be introduced.
-
-\subsection{Figures and Tables}\label{FAT}
-\paragraph{Positioning Figures and Tables} Place figures and tables at the top and 
-bottom of columns. Avoid placing them in the middle of columns. Large 
-figures and tables may span across both columns. Figure captions should be 
-below the figures; table heads should appear above the tables. Insert 
-figures and tables after they are cited in the text. Use the abbreviation 
-``Fig.~\ref{fig}'', even at the beginning of a sentence.
-
-\begin{table}[htbp]
-\caption{Table Type Styles}
-\begin{center}
-\begin{tabular}{|c|c|c|c|}
-\hline
-\textbf{Table}&\multicolumn{3}{|c|}{\textbf{Table Column Head}} \\
-\cline{2-4} 
-\textbf{Head} & \textbf{\textit{Table column subhead}}& \textbf{\textit{Subhead}}& \textbf{\textit{Subhead}} \\
-\hline
-copy& More table copy$^{\mathrm{a}}$& &  \\
-\hline
-\multicolumn{4}{l}{$^{\mathrm{a}}$Sample of a Table footnote.}
-\end{tabular}
-\label{tab1}
-\end{center}
-\end{table}
-
-\begin{figure}[htbp]
-\centerline{\includegraphics{fig1.png}}
-\caption{Example of a figure caption.}
-\label{fig}
-\end{figure}
-
-Figure Labels: Use 8 point Times New Roman for Figure labels. Use words 
-rather than symbols or abbreviations when writing Figure axis labels to 
-avoid confusing the reader. As an example, write the quantity 
-``Magnetization'', or ``Magnetization, M'', not just ``M''. If including 
-units in the label, present them within parentheses. Do not label axes only 
-with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization 
-\{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
-quantities and units. For example, write ``Temperature (K)'', not 
-``Temperature/K''.
-
-\section*{Acknowledgment}
-
-The preferred spelling of the word ``acknowledgment'' in America is without 
-an ``e'' after the ``g''. Avoid the stilted expression ``one of us (R. B. 
-G.) thanks $\ldots$''. Instead, try ``R. B. G. thanks$\ldots$''. Put sponsor 
-acknowledgments in the unnumbered footnote on the first page.
-
-\section*{References}
-
-
-Number footnotes separately in superscripts. Place the actual footnote at 
-the bottom of the column in which it was cited. Do not put footnotes in the 
-abstract or reference list. Use letters for table footnotes.
-
-Unless there are six authors or more give all authors' names; do not use 
-``et al.''. Papers that have not been published, even if they have been 
-Capitalize only the first word in a paper title, except for proper nouns and 
-element symbols.\cite{modeling-rl-games}
-
-For papers published in translation journals, please give the English 
-
-\vspace{12pt}
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 \end{document}
