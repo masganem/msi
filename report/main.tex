@@ -200,7 +200,7 @@ Esse cenário providencia um MDP altamente estocástico e um problema com claro 
 
 \subsection{Aprendizado}
 \label{learning}
-Definimos o problema de aprendizado na simulação de Monopoly definida como sobreviver até o instante $t=30$ em um ambiente que naturalmente leva o agente à falência. O perfil do ambiente apresentado é indiretamente ilustrado pelos resultados observados nas Figuras $?$ e $?$. Para aprendizado por reforço, é essencial analisar as características mais proeminentes do ambiente: especificamente, trabalhamos com episódios curtos, recompensas somente no fim do episódio e um ambiente altamente estocástico. Isto significa que ações do agente e, portanto, alterações na política, não têm consequências imediatamente evidentes no espaço de observação.
+Definimos o problema de aprendizado na simulação de Monopoly definida como sobreviver até o instante $t=30$ em um ambiente que naturalmente leva o agente à falência. O perfil do ambiente apresentado é indiretamente ilustrado pelos resultados observados nas Figuras \ref{fig:ep_lens_control_0} e \ref{fig:ep_lens_control_0}. Para aprendizado por reforço, é essencial analisar as características mais proeminentes do ambiente: especificamente, trabalhamos com episódios curtos, recompensas somente no fim do episódio e um ambiente altamente estocástico. Isto significa que ações do agente e, portanto, alterações na política, não têm consequências imediatamente evidentes no espaço de observação.
 
 A primeira tentativa de aprendizado foi feita com DQNs\cite{dqn}. Mesmo com diferentes configurações de pesos de recompensa e hiperparâmetros, essa solução não foi capaz de convergir para uma política sequer aceitável no ambiente apresentado. Atribuímos esses resultados à dificuldade da estratégia central de Q-Learning, mesmo dadas as soluções adicionais em DQNs, perante um ambiente com alta variância, dificultando a avaliação correta das ações. Além disso, a presença de recompensas esparsas e dadas somente ao final providencia um sinal insuficiente para a otimização adequada, especialmente para a detecção de nuances para escapar de ótimos locais.
 
@@ -265,7 +265,7 @@ Dados os valores esperados do ambiente definido na Subseção \ref{modeling:mono
     \centering
     \includegraphics[width=1\linewidth]{figures/episode_lengths_ppo.png}
     \caption{Duração do episódio para 1000 episódios executados com um agente treinado por PPO durante 200.000 episódios.}
-    \label{fig:ep_lens_control}
+    \label{fig:ep_lens_ppo}
 \end{figure}
 
 \begin{figure}[htpb]
@@ -275,7 +275,7 @@ Dados os valores esperados do ambiente definido na Subseção \ref{modeling:mono
     \label{fig:eval_progress}
 \end{figure}
 
-O agente obtido a partir do treino via PPO por 200.000 etapas considerando os hiperparâmetros na Tabela \ref{tab:ppo_hyperparams} performa levemente melhor que o agente aleatório, sobrevivendo uma média de 17.7 dos 30 episódios máximos e atingindo o episódio final mais frequentemente, conforme ilustrado pela Figura \ref{fig:ep_lens_control}. De fato, uma sobrevivência média de $+3.3$ turnos é suficiente para que o agente treinado por PPO vença frequentemente agentes aleatórios no cenário multijogador.
+O agente obtido a partir do treino via PPO por 200.000 etapas considerando os hiperparâmetros na Tabela \ref{tab:ppo_hyperparams} performa levemente melhor que o agente aleatório, sobrevivendo uma média de 17.7 dos 30 episódios máximos e atingindo o episódio final mais frequentemente, conforme ilustrado pela Figura \ref{fig:ep_lens_ppo}. De fato, uma sobrevivência média de $+3.3$ turnos é suficiente para que o agente treinado por PPO vença frequentemente agentes aleatórios no cenário multijogador.
 
 Observa-se a variância do ambiente pelas linhas azuis em todas as figuras dispostas nessa subseção -- além do ruído induzido pela estocasticidade, um padrão interessante se torna evidente: a frequência de "sucesso" de cada agente conforme os critérios definidos. Portanto, constatamos que o agente obtido supera a baseline aleatória, mas não é particularmente efetivo em capturar os padrões do ambiente. Especificamente, é comum que o agente ainda compre propriedades mesmo com baixo capital, levando a terminações prematuras mais frequentes que o caso ótimo.
 
